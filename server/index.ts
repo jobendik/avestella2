@@ -261,6 +261,19 @@ app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: Date.now() });
 });
 
+// Version endpoint - shows current git commit info
+app.get('/api/version', (_req, res) => {
+    const { execSync } = require('child_process');
+    try {
+        const commit = execSync('git rev-parse --short HEAD').toString().trim();
+        const message = execSync('git log -1 --format=%s').toString().trim();
+        const date = execSync('git log -1 --format=%ci').toString().trim();
+        res.json({ commit, message, date });
+    } catch {
+        res.json({ commit: 'unknown' });
+    }
+});
+
 // Mount progression routes (challenges, progression, gifts, guilds)
 app.use('/api', progressionRoutes);
 
