@@ -349,14 +349,11 @@ export function useGameState(): UseGameStateReturn {
     // Listen for world state updates (contains all remote players)
     const handleWorldState = (data: any) => {
       if (!data?.players) {
-        console.log('🌍 world_state: no players in data', data);
         return;
       }
       
       const state = gameState.current;
       const remotePlayers = data.players.filter((p: any) => p.id !== playerId);
-      
-      console.log(`🌍 world_state: ${data.players.length} total, ${remotePlayers.length} remote players`);
       
       // Update or add remote players
       for (const playerData of remotePlayers) {
@@ -369,7 +366,6 @@ export function useGameState(): UseGameStateReturn {
           agent.y = playerData.y;
         } else {
           // Add new remote player as an "Agent"
-          console.log(`🌍 Adding remote player: ${playerData.id} at (${playerData.x}, ${playerData.y})`);
           const hueToColor = (hue: number) => `hsl(${hue}, 70%, 60%)`;
           const newAgent = new AIAgent(
             playerData.x, 
@@ -389,13 +385,6 @@ export function useGameState(): UseGameStateReturn {
       state.aiAgents = state.aiAgents.filter(
         agent => !agent.id.startsWith('player_') || remoteIds.has(agent.id)
       );
-      
-      // Debug: Log total agents with player IDs
-      const playerAgents = state.aiAgents.filter(a => a.id.startsWith('player_'));
-      if (playerAgents.length > 0 && Math.random() < 0.02) {
-        const pa = playerAgents[0];
-        console.log(`🎮 aiAgents has ${playerAgents.length} remote: id=${pa.id.substring(0,15)} x=${Math.round(pa.x)} y=${Math.round(pa.y)} realmId=${pa.realmId} currentRealm=${state.currentRealm}`);
-      }
     };
     
     (gameClient as any).on('world_state', handleWorldState);

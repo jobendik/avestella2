@@ -1816,14 +1816,6 @@ export function GameCanvas(): JSX.Element {
     });
 
     // Draw AI agents (with viewport culling)
-    const playerAgentsForRender = state.aiAgents.filter(a => a.id.startsWith('player_'));
-    if (playerAgentsForRender.length > 0 && Math.random() < 0.01) {
-      const pa = playerAgentsForRender[0];
-      const inVP = isInViewport(pa.x, pa.y, pa.currentRadius || 50);
-      const realmMatch = !pa.realmId || pa.realmId === renderRealm;
-      console.log(`🖌️ RENDER: id=${pa.id.substring(0,15)} pos=(${Math.round(pa.x)},${Math.round(pa.y)}) realmId=${pa.realmId} renderRealm=${renderRealm} realmMatch=${realmMatch} inViewport=${inVP} camera=(${Math.round(state.cameraX)},${Math.round(state.cameraY)})`);
-    }
-    
     state.aiAgents.forEach(agent => {
       // Filter by Realm
       if (agent.realmId && agent.realmId !== renderRealm) return;

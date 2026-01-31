@@ -326,14 +326,17 @@ export class WebSocketHandler {
 
         console.log(`🔗 Player connected: ${playerId} to realm ${realm}`);
 
+        // Initialize at world center (WORLD_SIZE = 8000, so center is 4000)
+        const WORLD_CENTER = 4000;
+        
         const connection: PlayerConnection = {
             ws,
             playerId,
             playerName: `Player_${playerId.substring(0, 6)}`,
             realm,
             lastSeen: Date.now(),
-            x: Math.random() * 1000 - 500,
-            y: Math.random() * 1000 - 500,
+            x: WORLD_CENTER,
+            y: WORLD_CENTER,
             color: Math.floor(Math.random() * 360),
             xp: 0,
             level: 1,
