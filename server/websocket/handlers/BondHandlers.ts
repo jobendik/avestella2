@@ -114,11 +114,10 @@ export class BondHandlers {
 
                 // Notify on mode change
                 if (result.modeChanged) {
-                    notificationService.notify(connection.playerId, {
-                        type: 'bond',
-                        title: 'Bond Strengthened',
-                        message: `Your bond has grown to ${result.bond.mode} mode!`
-                    });
+                    notificationService.notify(connection.playerId, 'social',
+                        `Your bond has grown to ${result.bond.mode} mode!`,
+                        { title: 'Bond Strengthened' }
+                    );
                 }
             }
         } catch (error) {
@@ -233,16 +232,14 @@ export class BondHandlers {
                         timestamp: Date.now()
                     });
 
-                    notificationService.notify(connection.playerId, {
-                        type: 'achievement',
-                        title: 'Bond Sealed!',
-                        message: `You created a star with ${targetConn.playerName}!`
-                    });
-                    notificationService.notify(targetId, {
-                        type: 'achievement',
-                        title: 'Bond Sealed!',
-                        message: `You created a star with ${connection.playerName}!`
-                    });
+                    notificationService.notify(connection.playerId, 'achievement',
+                        `You created a star with ${targetConn.playerName}!`,
+                        { title: 'Bond Sealed!' }
+                    );
+                    notificationService.notify(targetId, 'achievement',
+                        `You created a star with ${connection.playerName}!`,
+                        { title: 'Bond Sealed!' }
+                    );
                 } else {
                     ctx.send(connection.ws, {
                         type: 'seal_bond_error',

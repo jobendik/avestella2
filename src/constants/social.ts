@@ -462,39 +462,3 @@ export const DEFAULT_GUILD = {
   ],
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Simulated Friends
-// ─────────────────────────────────────────────────────────────────────────────
-// @deprecated - This is MOCK DATA for development only. Do NOT use in production.
-// Real friend data should be fetched from the backend via WebSocket.
-
-export const SIMULATED_FRIENDS = [
-  { id: 'friend_1', name: 'StarWanderer', avatar: '🌟', level: 24, stardust: 1250, online: true },
-  { id: 'friend_2', name: 'NightGlow', avatar: '🌙', level: 18, stardust: 890, online: false, lastSeen: '2h ago' },
-  { id: 'friend_3', name: 'SunBeam', avatar: '☀️', level: 31, stardust: 2100, online: true },
-  { id: 'friend_4', name: 'CosmicDust', avatar: '✨', level: 15, stardust: 650, online: false, lastSeen: '1d ago' },
-  { id: 'friend_5', name: 'AuroraBright', avatar: '💫', level: 28, stardust: 1800, online: true },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Friend Activity Samples
-// ─────────────────────────────────────────────────────────────────────────────
-// @deprecated - This is MOCK DATA for development only. Do NOT use in production.
-
-export const SAMPLE_FRIEND_ACTIVITY = [
-  { friend: 'StarWanderer', avatar: '🌟', text: 'lit a beacon!', time: '5m ago', icon: '🔷' },
-  { friend: 'SunBeam', avatar: '☀️', text: 'reached Level 32!', time: '15m ago', icon: '🎉' },
-  { friend: 'AuroraBright', avatar: '💫', text: 'collected 100 fragments!', time: '1h ago', icon: '✨' },
-  { friend: 'NightGlow', avatar: '🌙', text: 'formed a new bond', time: '3h ago', icon: '🤝' },
-  { friend: 'CosmicDust', avatar: '✨', text: 'unlocked a new trail!', time: '5h ago', icon: '🎨' },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Friend Requests Samples
-// ─────────────────────────────────────────────────────────────────────────────
-// @deprecated - This is MOCK DATA for development only. Do NOT use in production.
-
-export const SAMPLE_FRIEND_REQUESTS = [
-  { id: 'req_1', name: 'GlowingSpirit', avatar: '👻', level: 12, timestamp: Date.now() - 3600000 },
-  { id: 'req_2', name: 'RadiantSoul', avatar: '💖', level: 20, timestamp: Date.now() - 7200000 },
-];

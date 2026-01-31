@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { EventEmitter } from 'events';
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 // @ts-ignore - uuid package types
 import { v4 as uuidv4 } from 'uuid';
 
@@ -96,8 +96,8 @@ const SeekGameSessionSchema = new Schema<ISeekGameSession>({
     }
 }, { collection: 'seekGameSessions' });
 
-const SeekGameSession = mongoose.models.SeekGameSession || 
-    mongoose.model<ISeekGameSession>('SeekGameSession', SeekGameSessionSchema);
+const SeekGameSession = (mongoose.models.SeekGameSession || 
+    mongoose.model<ISeekGameSession>('SeekGameSession', SeekGameSessionSchema)) as Model<ISeekGameSession>;
 
 // ============================================
 // SEEK MODE SERVICE

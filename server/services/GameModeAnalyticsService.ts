@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { EventEmitter } from 'events';
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 import { analyticsService } from './AnalyticsService.js';
 
 // ============================================
@@ -102,8 +102,8 @@ const PlayerPreferencesSchema = new Schema<IPlayerPreferences>({
     updatedAt: { type: Date, default: Date.now }
 }, { collection: 'playerPreferences' });
 
-const PlayerPreferences = mongoose.models.PlayerPreferences ||
-    mongoose.model<IPlayerPreferences>('PlayerPreferences', PlayerPreferencesSchema);
+const PlayerPreferences = (mongoose.models.PlayerPreferences ||
+    mongoose.model<IPlayerPreferences>('PlayerPreferences', PlayerPreferencesSchema)) as Model<IPlayerPreferences>;
 
 // ============================================
 // GAME MODE ANALYTICS MODEL
@@ -142,8 +142,8 @@ const GameModeSessionSchema = new Schema<IGameModeSession>({
 GameModeSessionSchema.index({ playerId: 1, gameMode: 1 });
 GameModeSessionSchema.index({ startedAt: -1 });
 
-const GameModeSession = mongoose.models.GameModeSession ||
-    mongoose.model<IGameModeSession>('GameModeSession', GameModeSessionSchema);
+const GameModeSession = (mongoose.models.GameModeSession ||
+    mongoose.model<IGameModeSession>('GameModeSession', GameModeSessionSchema)) as Model<IGameModeSession>;
 
 // ============================================
 // AMBIENT MODE TRACKING MODEL
@@ -185,8 +185,8 @@ const AmbientSessionSchema = new Schema<IAmbientSession>({
 
 AmbientSessionSchema.index({ playerId: 1, mode: 1 });
 
-const AmbientSession = mongoose.models.AmbientSession ||
-    mongoose.model<IAmbientSession>('AmbientSession', AmbientSessionSchema);
+const AmbientSession = (mongoose.models.AmbientSession ||
+    mongoose.model<IAmbientSession>('AmbientSession', AmbientSessionSchema)) as Model<IAmbientSession>;
 
 // ============================================
 // GAME MODE ANALYTICS SERVICE

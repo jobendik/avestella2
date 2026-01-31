@@ -36,12 +36,6 @@ export * from './cosmetics';
 export {
     AMBIENT_MODES as SOCIAL_AMBIENT_MODES,
     PERSONALITIES
-    // DEPRECATED: Mock data removed - use backend API instead
-    // DEFAULT_EVENTS,
-    // DEFAULT_GUILD,
-    // SIMULATED_FRIENDS,
-    // SAMPLE_FRIEND_ACTIVITY,
-    // SAMPLE_FRIEND_REQUESTS
 } from './social';
 
 // UI Constants - exclude duplicates that exist in game.ts  

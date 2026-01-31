@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { EventEmitter } from 'events';
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 // @ts-ignore - uuid package types
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
@@ -110,8 +110,8 @@ RecordingSchema.index({ visibility: 1, status: 1 });
 RecordingSchema.index({ tags: 1 });
 RecordingSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-const Recording = mongoose.models.Recording || 
-    mongoose.model<IRecording>('Recording', RecordingSchema);
+export const Recording = (mongoose.models.Recording || 
+    mongoose.model<IRecording>('Recording', RecordingSchema)) as Model<IRecording>;
 
 // ============================================
 // UPLOAD TOKEN MODEL
@@ -141,8 +141,10 @@ const UploadTokenSchema = new Schema<IUploadToken>({
 
 UploadTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-const UploadToken = mongoose.models.UploadToken || 
-    mongoose.model<IUploadToken>('UploadToken', UploadTokenSchema);
+const UploadToken = (mongoose.models.UploadToken || 
+    mongoose.model<IUploadToken>('UploadToken', UploadTokenSchema)) as Model<IUploadToken>;
+
+export { UploadToken };
 
 // ============================================
 // STORAGE CONFIGURATION
@@ -538,4 +540,3 @@ class MediaStorageService extends EventEmitter {
 }
 
 export const mediaStorageService = new MediaStorageService();
-export { Recording, UploadToken };

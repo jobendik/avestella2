@@ -723,6 +723,52 @@ export class AchievementService {
             minPoints: r.minPoints
         }));
     }
+
+    /**
+     * Directly unlock an achievement by ID (for special rewards)
+     */
+    async unlockAchievement(playerId: string, achievementId: string): Promise<boolean> {
+        const definition = ALL_ACHIEVEMENTS.get(achievementId);
+        if (!definition) return false;
+
+        const data = await this.getPlayerAchievements(playerId);
+        if (data.unlockedIds.includes(achievementId)) return false;
+
+        // Find or create progress entry
+        let progress = data.achievements.find(a => a.achievementId === achievementId);
+        if (!progress) {
+            progress = {
+                achievementId,
+                progress: definition.requirement.target,
+                unlocked: true,
+                unlockedAt: new Date(),
+                tier: definition.tiers ? definition.tiers.targets.length : 0
+            };
+            data.achievements.push(progress);
+        } else {
+            progress.progress = definition.requirement.target;
+            progress.unlocked = true;
+            progress.unlockedAt = new Date();
+        }
+
+        data.unlockedIds.push(achievementId);
+        data.totalUnlocked++;
+        data.lastUnlocked = new Date();
+        data.achievementPoints += definition.rewards.points;
+
+        if (definition.rewards.badge && !data.badges.includes(definition.rewards.badge)) {
+            data.badges.push(definition.rewards.badge);
+        }
+
+        if (definition.hidden && !data.hiddenDiscovered.includes(achievementId)) {
+            data.hiddenDiscovered.push(achievementId);
+        }
+
+        data.achievementRank = this.calculateRank(data.achievementPoints);
+        await this.saveAchievements(data);
+
+        return true;
+    }
 }
 
 export const achievementService = new AchievementService();

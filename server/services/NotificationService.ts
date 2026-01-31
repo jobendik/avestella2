@@ -29,7 +29,11 @@ export type NotificationType =
     | 'reward'
     | 'tag_invite'
     | 'whisper'
-    | 'connection_made';
+    | 'connection_made'
+    | 'social'
+    | 'achievement'
+    | 'gift'
+    | 'bond';
 
 export interface Notification {
     id: string;
@@ -72,7 +76,11 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, { title: string; icon: st
     reward: { title: 'Reward', icon: '💎', priority: 'normal' },
     tag_invite: { title: 'Tag Game', icon: '🏷️', priority: 'normal' },
     whisper: { title: 'Whisper', icon: '💭', priority: 'normal' },
-    connection_made: { title: 'Connection Made', icon: '🔗', priority: 'normal' }
+    connection_made: { title: 'Connection Made', icon: '🔗', priority: 'normal' },
+    social: { title: 'Social', icon: '👥', priority: 'normal' },
+    achievement: { title: 'Achievement', icon: '🏆', priority: 'high' },
+    gift: { title: 'Gift', icon: '🎁', priority: 'normal' },
+    bond: { title: 'Bond', icon: '💖', priority: 'normal' }
 };
 
 export class NotificationService extends EventEmitter {

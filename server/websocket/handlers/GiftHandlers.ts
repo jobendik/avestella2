@@ -71,11 +71,12 @@ export class GiftHandlers {
                 }
 
                 // Send notification (persisted for offline players)
-                await notificationService.notifyGift(
+                notificationService.notify(
                     toPlayerId,
-                    connection.playerId,
-                    connection.playerName,
-                    giftType
+                    'gift',
+                    `${connection.playerName || 'Someone'} sent you a ${giftType}!`,
+                    { fromId: connection.playerId, giftType },
+                    { title: 'Gift Received!' }
                 );
             } else {
                 ctx.sendError(connection, result.error || 'Failed to send gift');

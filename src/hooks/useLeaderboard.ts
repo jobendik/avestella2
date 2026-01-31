@@ -4,6 +4,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { loadFromStorage, saveToStorage } from '@/utils/storage';
+import { gameClient } from '@/services/GameClient';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -138,36 +139,10 @@ export interface UseLeaderboardReturn {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Mock Data Generator
+// Server Data Fetching (replaces mock data)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PLAYER_NAMES = [
-  'StarChaser', 'LumiNova', 'DawnSeeker', 'MoonDancer', 'SkyWeaver',
-  'EchoLight', 'CrystalWing', 'RadiantSoul', 'NightGlider', 'PrismWalker',
-  'AuroraFlame', 'CelestialWind', 'TwilightSage', 'BeaconKeeper', 'StarlightDreamer',
-  'CloudRider', 'NeonPhoenix', 'CosmicTide', 'SolarFlare', 'VoidWanderer',
-  'GalaxyHeart', 'LunarEcho', 'NovaSeeker', 'ZenithRunner', 'PulsarKnight',
-  'NebulaWing', 'AstralDancer', 'PhotonRider', 'StellarMind', 'QuasarSoul'
-];
-
-const AVATARS = ['⭐', '🌟', '💫', '✨', '🌙', '☀️', '🔥', '💎', '👑', '🏆'];
-
-function generateMockLeaderboard(): LeaderboardEntry[] {
-  return PLAYER_NAMES.map((name, i) => {
-    const seed = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const variance = (seed % 100) / 100;
-
-    return {
-      name,
-      avatar: AVATARS[i % AVATARS.length],
-      level: Math.floor(15 + (variance * 85)) + (i % 3),
-      xp: Math.floor(5000 + (variance * 95000)),
-      stardust: Math.floor(1000 + (variance * 49000)),
-      challengesCompleted: Math.floor(10 + (variance * 290)),
-      seasonTier: Math.floor(5 + (variance * 45))
-    };
-  });
-}
+// Leaderboard entries are now fetched from the server via WebSocket
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Hook Implementation
@@ -192,7 +167,46 @@ export function useLeaderboard(props?: UseLeaderboardProps): UseLeaderboardRetur
 
   const [category, setCategory] = useState<LeaderboardCategory>('xp');
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('allTime');
-  const [mockData] = useState(() => generateMockLeaderboard());
+  const [serverEntries, setServerEntries] = useState<LeaderboardEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch leaderboard from server on mount and when category changes
+  useEffect(() => {
+    const handleLeaderboardData = (data: any) => {
+      if (data.data?.entries) {
+        const entries: LeaderboardEntry[] = data.data.entries.map((entry: any) => ({
+          name: entry.displayName || entry.playerId || 'Unknown',
+          avatar: entry.avatar || '⭐',
+          level: entry.level || 1,
+          xp: entry.xp || entry.value || 0,
+          stardust: entry.stardust || 0,
+          challengesCompleted: entry.challengesCompleted || 0,
+          seasonTier: entry.seasonTier || 0,
+          weeklyWins: entry.weeklyWins || 0,
+          isPlayer: false
+        }));
+        setServerEntries(entries);
+        setIsLoading(false);
+      }
+    };
+
+    const handleConnected = () => {
+      gameClient.requestLeaderboard(category, 50);
+    };
+
+    gameClient.on('leaderboard', handleLeaderboardData);
+    gameClient.on('connected', handleConnected);
+
+    // Request leaderboard data if already connected
+    if (gameClient.isConnected()) {
+      gameClient.requestLeaderboard(category, 50);
+    }
+
+    return () => {
+      gameClient.off('leaderboard', handleLeaderboardData);
+      gameClient.off('connected', handleConnected);
+    };
+  }, [category]);
 
   // Weekly stats with persistence
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>(() => {
@@ -367,10 +381,12 @@ export function useLeaderboard(props?: UseLeaderboardProps): UseLeaderboardRetur
     isPlayer: true
   }), [playerLevel, playerXP, playerStardust, playerChallenges, playerSeasonTier, weeklyStats.wins]);
 
-  // All entries including player
+  // All entries including player (from server + current player)
   const allEntries = useMemo(() => {
-    return [...mockData, playerEntry];
-  }, [mockData, playerEntry]);
+    // Filter out the player's own entry from server data to avoid duplicates
+    const otherPlayers = serverEntries.filter(e => !e.isPlayer);
+    return [...otherPlayers, playerEntry];
+  }, [serverEntries, playerEntry]);
 
   // Sorted entries based on category
   const sortedEntries = useMemo(() => {
@@ -401,9 +417,9 @@ export function useLeaderboard(props?: UseLeaderboardProps): UseLeaderboardRetur
   }, [playerEntry]);
 
   const refreshLeaderboard = useCallback(() => {
-    // In production, this would fetch from server
-    // For now, it's just a placeholder
-  }, []);
+    setIsLoading(true);
+    gameClient.requestLeaderboard(category, 50);
+  }, [category]);
 
   const recordXPEarned = useCallback((xp: number) => {
     setWeeklyStats(prev => ({

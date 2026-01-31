@@ -531,6 +531,7 @@ export interface GuildChatMessage {
 }
 
 export interface Guild {
+  id?: string;
   name: string;
   tag: string;
   level: number;

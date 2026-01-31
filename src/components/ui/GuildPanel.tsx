@@ -134,10 +134,8 @@ export function GuildPanel({ onClose }: GuildPanelProps): JSX.Element {
                                     <button
                                         onClick={() => {
                                             if (newGuildName.length >= 3 && newGuildTag.length >= 2) {
-                                                // TODO: Call gameClient.createGuild
                                                 import('@/services/GameClient').then(({ gameClient }) => {
-                                                    gameClient.send('guild_action', {
-                                                        action: 'create',
+                                                    gameClient.sendGuildAction('create', {
                                                         guildName: newGuildName,
                                                         guildTag: newGuildTag
                                                     });

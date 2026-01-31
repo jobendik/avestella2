@@ -27,6 +27,11 @@ class GameClient extends EventEmitter {
     private playerId: string = '';
     private realm: RealmId = 'genesis';
     private url: string = 'ws://localhost:3001/ws'; // Default to local dev
+    
+    // Network stats tracking
+    private _latency: number = 0;
+    private _nearbyPlayerCount: number = 0;
+    private lastPingTime: number = 0;
 
     constructor() {
         super();
@@ -35,6 +40,20 @@ class GameClient extends EventEmitter {
             // Production URL - update this when you have a domain
             this.url = `wss://${window.location.host}/ws`;
         }
+    }
+
+    /**
+     * Get current latency in milliseconds (based on ping/pong roundtrip)
+     */
+    public getLatency(): number {
+        return this._latency;
+    }
+
+    /**
+     * Get current nearby player count
+     */
+    public getNearbyPlayerCount(): number {
+        return this._nearbyPlayerCount;
     }
 
     /**
@@ -218,6 +237,20 @@ class GameClient extends EventEmitter {
 
     public requestWorldEvents() {
         this.send('request_world_events', {});
+    }
+
+    /**
+     * Send a guild action (create, claim_gift, get_gifts, etc.)
+     */
+    public sendGuildAction(action: string, data: Record<string, any> = {}) {
+        this.send('guild_action', { action, ...data });
+    }
+
+    /**
+     * Update event progress
+     */
+    public updateEventProgress(type: 'fragment' | 'beacon' | 'bond', amount: number = 1) {
+        this.send('update_event_progress', { type, amount });
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -592,6 +625,20 @@ class GameClient extends EventEmitter {
         this.send('daily:getLeaderboard', {});
     }
 
+    /**
+     * Request general leaderboard data from server
+     */
+    public requestLeaderboard(category: string = 'xp', limit: number = 50) {
+        this.send('request_leaderboard', { type: category, limit });
+    }
+
+    /**
+     * Request player's rank on leaderboard
+     */
+    public requestPlayerRank(category: string = 'xp') {
+        this.send('get_player_rank', { type: category });
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // GALLERY METHODS (Phase 1)
     // ═══════════════════════════════════════════════════════════════════════════
@@ -810,19 +857,43 @@ class GameClient extends EventEmitter {
 
     private send(type: string, data: any) {
         if (this.ws?.readyState === WebSocket.OPEN) {
+            // Track ping time for latency measurement
+            if (type === 'ping') {
+                this.lastPingTime = Date.now();
+            }
             this.ws.send(JSON.stringify({ type, data, timestamp: Date.now() }));
         }
     }
 
     private handleMessage(msg: WebSocketMessage) {
+        // Handle pong response for latency calculation
+        if (msg.type === 'pong') {
+            if (this.lastPingTime > 0) {
+                this._latency = Date.now() - this.lastPingTime;
+                this.emit('latency_update', { latency: this._latency });
+            }
+        }
+        
+        // Handle world_state for nearby player count
+        if (msg.type === 'world_state' && msg.data?.players) {
+            // Count other players (excluding self)
+            this._nearbyPlayerCount = Object.keys(msg.data.players).filter(
+                id => id !== this.playerId
+            ).length;
+            this.emit('nearby_count_update', { count: this._nearbyPlayerCount });
+        }
+        
         this.emit(msg.type, msg.data);
     }
 
     private startHeartbeat() {
         this.stopHeartbeat();
+        // Send ping every 5 seconds for more responsive latency tracking
         this.heartbeatTimer = setInterval(() => {
             this.send('ping', {});
-        }, 30000);
+        }, 5000);
+        // Send initial ping immediately
+        this.send('ping', {});
     }
 
     private stopHeartbeat() {

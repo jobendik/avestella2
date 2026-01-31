@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { EventEmitter } from 'events';
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 
 // ============================================
@@ -84,8 +84,8 @@ const WorldEventSchema = new Schema<IWorldEvent>({
     updatedAt: { type: Date, default: Date.now }
 }, { collection: 'worldEvents' });
 
-const WorldEvent = mongoose.models.WorldEvent || 
-    mongoose.model<IWorldEvent>('WorldEvent', WorldEventSchema);
+const WorldEvent = (mongoose.models.WorldEvent || 
+    mongoose.model<IWorldEvent>('WorldEvent', WorldEventSchema)) as Model<IWorldEvent>;
 
 // ============================================
 // EVENT TYPE DEFINITIONS
@@ -375,7 +375,7 @@ class WorldEventSchedulerService extends EventEmitter {
         }).lean();
 
         for (const event of events) {
-            this.activeEvents.set(event.eventId, event as IWorldEvent);
+            this.activeEvents.set(event.eventId, event as unknown as IWorldEvent);
         }
 
         console.log(`📊 Loaded ${events.length} active events`);
@@ -555,7 +555,7 @@ class WorldEventSchedulerService extends EventEmitter {
             query.$or = [{ realm }, { realm: null }];
         }
 
-        return WorldEvent.find(query).lean();
+        return WorldEvent.find(query).lean() as unknown as IWorldEvent[];
     }
 
     async getUpcomingEvents(realm?: string, limit: number = 10): Promise<IWorldEvent[]> {
@@ -570,7 +570,7 @@ class WorldEventSchedulerService extends EventEmitter {
         return WorldEvent.find(query)
             .sort({ startTime: 1 })
             .limit(limit)
-            .lean();
+            .lean() as unknown as IWorldEvent[];
     }
 
     async getEventHistory(realm?: string, limit: number = 20): Promise<IWorldEvent[]> {
@@ -582,7 +582,7 @@ class WorldEventSchedulerService extends EventEmitter {
         return WorldEvent.find(query)
             .sort({ endTime: -1 })
             .limit(limit)
-            .lean();
+            .lean() as unknown as IWorldEvent[];
     }
 
     getEventTypes(): EventTypeConfig[] {

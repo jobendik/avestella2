@@ -44,37 +44,38 @@ export class VoiceHandlers {
         try {
             const { roomId } = data;
 
-            const result = await voiceChannelService.joinRoom(
+            const result = voiceChannelService.joinRoom(
                 connection.playerId,
                 roomId || `proximity_${connection.realm}`
             );
 
-            if (result.success) {
+            if (result.success && result.room) {
+                // Get participant IDs from the room
+                const participantIds = Array.from(result.room.currentParticipants);
+                
                 ctx.send(connection.ws, {
                     type: 'voice_room_joined',
                     data: {
-                        roomId: result.roomId,
-                        participants: result.participants,
-                        settings: result.settings
+                        roomId: result.room.id,
+                        participants: participantIds,
+                        settings: result.room.settings
                     },
                     timestamp: Date.now()
                 });
 
                 // Notify other participants
-                if (result.participants) {
-                    for (const participantId of result.participants) {
-                        if (participantId !== connection.playerId) {
-                            const participantConn = ctx.connections.get(participantId);
-                            if (participantConn) {
-                                ctx.send(participantConn.ws, {
-                                    type: 'voice_peer_joined',
-                                    data: {
-                                        peerId: connection.playerId,
-                                        peerName: connection.playerName
-                                    },
-                                    timestamp: Date.now()
-                                });
-                            }
+                for (const participantId of participantIds) {
+                    if (participantId !== connection.playerId) {
+                        const participantConn = ctx.connections.get(participantId);
+                        if (participantConn) {
+                            ctx.send(participantConn.ws, {
+                                type: 'voice_peer_joined',
+                                data: {
+                                    peerId: connection.playerId,
+                                    peerName: connection.playerName
+                                },
+                                timestamp: Date.now()
+                            });
                         }
                     }
                 }
@@ -94,9 +95,13 @@ export class VoiceHandlers {
         try {
             const { roomId } = data;
 
-            const result = await voiceChannelService.leaveRoom(connection.playerId, roomId);
+            // Get remaining participants before leaving
+            const room = voiceChannelService.getRoom(roomId);
+            const remainingParticipants = room ? Array.from(room.currentParticipants).filter(id => id !== connection.playerId) : [];
 
-            if (result.success) {
+            const success = voiceChannelService.leaveRoom(connection.playerId);
+
+            if (success) {
                 ctx.send(connection.ws, {
                     type: 'voice_room_left',
                     data: { roomId },
@@ -104,18 +109,16 @@ export class VoiceHandlers {
                 });
 
                 // Notify other participants
-                if (result.remainingParticipants) {
-                    for (const participantId of result.remainingParticipants) {
-                        const participantConn = ctx.connections.get(participantId);
-                        if (participantConn) {
-                            ctx.send(participantConn.ws, {
-                                type: 'voice_peer_left',
-                                data: {
-                                    peerId: connection.playerId
-                                },
-                                timestamp: Date.now()
-                            });
-                        }
+                for (const participantId of remainingParticipants) {
+                    const participantConn = ctx.connections.get(participantId);
+                    if (participantConn) {
+                        ctx.send(participantConn.ws, {
+                            type: 'voice_peer_left',
+                            data: {
+                                peerId: connection.playerId
+                            },
+                            timestamp: Date.now()
+                        });
                     }
                 }
             }
@@ -131,13 +134,13 @@ export class VoiceHandlers {
         try {
             const { muted, roomId } = data;
 
-            await voiceChannelService.setMuted(connection.playerId, roomId, muted);
+            voiceChannelService.setMuted(connection.playerId, muted);
 
             // Notify other participants
-            const roomParticipants = await voiceChannelService.getRoomParticipants(roomId);
-            for (const participantId of roomParticipants) {
-                if (participantId !== connection.playerId) {
-                    const participantConn = ctx.connections.get(participantId);
+            const roomParticipants = voiceChannelService.getRoomParticipants(roomId);
+            for (const participant of roomParticipants) {
+                if (participant.playerId !== connection.playerId) {
+                    const participantConn = ctx.connections.get(participant.playerId);
                     if (participantConn) {
                         ctx.send(participantConn.ws, {
                             type: 'voice_peer_mute_changed',
@@ -163,16 +166,16 @@ export class VoiceHandlers {
             const { speaking } = data;
 
             // Get player's current room
-            const roomId = await voiceChannelService.getPlayerRoom(connection.playerId);
-            if (!roomId) return;
+            const room = voiceChannelService.getPlayerRoom(connection.playerId);
+            if (!room) return;
 
-            await voiceChannelService.setSpeaking(connection.playerId, roomId, speaking);
+            voiceChannelService.setSpeaking(connection.playerId, speaking);
 
             // Broadcast to room participants
-            const roomParticipants = await voiceChannelService.getRoomParticipants(roomId);
-            for (const participantId of roomParticipants) {
-                if (participantId !== connection.playerId) {
-                    const participantConn = ctx.connections.get(participantId);
+            const roomParticipants = voiceChannelService.getRoomParticipants(room.id);
+            for (const participant of roomParticipants) {
+                if (participant.playerId !== connection.playerId) {
+                    const participantConn = ctx.connections.get(participant.playerId);
                     if (participantConn) {
                         ctx.send(participantConn.ws, {
                             type: 'voice_peer_speaking',
@@ -195,15 +198,14 @@ export class VoiceHandlers {
      */
     static async handleGetNearbyVoicePeers(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
         try {
-            const nearbyPeers = await voiceChannelService.getNearbyPeers(
-                connection.playerId,
-                connection.realm,
-                { x: connection.x, y: connection.y }
-            );
+            // Get players in the same realm proximity room
+            const room = voiceChannelService.getRoom(`proximity_${connection.realm}`);
+            const peers = room ? voiceChannelService.getRoomParticipants(room.id)
+                .filter(p => p.playerId !== connection.playerId) : [];
 
             ctx.send(connection.ws, {
                 type: 'nearby_voice_peers',
-                data: { peers: nearbyPeers },
+                data: { peers },
                 timestamp: Date.now()
             });
         } catch (error) {
@@ -216,7 +218,7 @@ export class VoiceHandlers {
      */
     static async handleGetVoiceRooms(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
         try {
-            const rooms = await voiceChannelService.getRoomsInRealm(connection.realm);
+            const rooms = voiceChannelService.getRoomsByRealm(connection.realm);
 
             ctx.send(connection.ws, {
                 type: 'voice_rooms',

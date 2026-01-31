@@ -48,21 +48,26 @@ npm run build
 
 ## 📋 Roadmap
 
-### Phase 1: Enhanced Simulation (Current)
+### Phase 1: Core Game Systems ✅
 - Daily login rewards & streaks
 - Daily challenge system
 - XP and leveling (1-100)
 - Season pass progression
 - Cosmetic shop system
-- Simulated leaderboards
+- Server-synced leaderboards
 
-### Phase 2: Real Multiplayer (Future)
-- Backend infrastructure
-- Account system
-- Cloud saves
+### Phase 2: Real Multiplayer ✅
+- Backend infrastructure (Node.js + WebSocket)
+- Account system (Firebase Auth)
+- MongoDB cloud persistence
 - Real-time multiplayer
 - Friend system
-- Voice chat
+- Voice chat (WebRTC)
+
+### Phase 3: Polish & Deploy (Current)
+- Production deployment
+- Performance optimization
+- Analytics & monitoring
 
 ## 🎯 Vision
 

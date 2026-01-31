@@ -427,7 +427,7 @@ export class AnalyticsService {
 
         return GlobalAnalytics.find({ date: { $gte: startDateStr } })
             .sort({ date: -1 })
-            .lean();
+            .lean() as unknown as IGlobalAnalytics[];
     }
 
     async trackAmbientModeSession(playerId: string, mode: string, duration: number): Promise<void> {

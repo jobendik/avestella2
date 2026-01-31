@@ -431,8 +431,9 @@ export class WebSocketHandler {
             // Phase 3 Security: Validate message data with Zod schemas
             const validation = validateMessage(message.type, message.data);
             if (!validation.success) {
-                console.warn(`[Validation] ${playerId}: ${message.type} - ${validation.error}`);
-                this.sendError(connection, `Invalid ${message.type} payload: ${validation.error}`);
+                const errorMsg = 'error' in validation ? validation.error : 'Validation failed';
+                console.warn(`[Validation] ${playerId}: ${message.type} - ${errorMsg}`);
+                this.sendError(connection, `Invalid ${message.type} payload: ${errorMsg}`);
                 return;
             }
 

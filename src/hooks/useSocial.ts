@@ -618,14 +618,68 @@ export function useSocial(): UseSocialReturn {
         return true;
     }, []);
 
-    const canContributeToday = useCallback(() => true, []);
-    const getRemainingDailyContributions = useCallback(() => 5, []);
-    const claimGuildGift = useCallback((id: string) => null, []);
-    const checkForGuildGifts = useCallback(() => { }, []);
+    // Check if player can contribute today (based on daily limit)
+    const canContributeToday = useCallback(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const dailyData = state.dailyGuildContributions;
+        // Reset if it's a new day
+        if (dailyData.date !== today) {
+            return true;
+        }
+        // Allow up to 5 contributions per day
+        return dailyData.contributions < 5;
+    }, [state.dailyGuildContributions]);
+
+    // Get remaining daily contributions
+    const getRemainingDailyContributions = useCallback(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const dailyData = state.dailyGuildContributions;
+        if (dailyData.date !== today) {
+            return 5; // Full allowance on new day
+        }
+        return Math.max(0, 5 - dailyData.contributions);
+    }, [state.dailyGuildContributions]);
+
+    // Claim a guild gift
+    const claimGuildGift = useCallback((giftId: string): GuildGift | null => {
+        const gift = state.pendingGuildGifts.find(g => g.id === giftId);
+        if (gift) {
+            // Request claim from server
+            gameClient.sendGuildAction('claim_gift', { giftId });
+            // Optimistically remove from pending
+            setState(prev => ({
+                ...prev,
+                pendingGuildGifts: prev.pendingGuildGifts.filter(g => g.id !== giftId)
+            }));
+            return gift;
+        }
+        return null;
+    }, [state.pendingGuildGifts]);
+
+    // Check for pending guild gifts from server
+    const checkForGuildGifts = useCallback(() => {
+        if (state.guild) {
+            gameClient.sendGuildAction('get_gifts');
+        }
+    }, [state.guild]);
 
     // Events
-    const updateEventProgress = useCallback(() => { }, []);
-    const getEventTimeRemaining = useCallback(() => 0, []);
+    const updateEventProgress = useCallback((type: 'fragment' | 'beacon' | 'bond', amount: number = 1) => {
+        setState(prev => {
+            const newProgress = { ...prev.eventProgress };
+            if (type === 'fragment') newProgress.fragmentsCollected += amount;
+            else if (type === 'beacon') newProgress.beaconsLit += amount;
+            else if (type === 'bond') newProgress.bondsFormed += amount;
+            return { ...prev, eventProgress: newProgress };
+        });
+        // Sync progress to server
+        gameClient.updateEventProgress(type, amount);
+    }, []);
+
+    const getEventTimeRemaining = useCallback(() => {
+        if (!state.activeEvent) return 0;
+        return Math.max(0, state.activeEvent.endTime - Date.now());
+    }, [state.activeEvent]);
 
     // Persistence
     const saveSocialData = useCallback(() => {

@@ -10,11 +10,18 @@ export class MentorshipHandlers {
     /**
      * Request to become a mentor
      */
-    static async handleBecomeMentor(connection: PlayerConnection, _data: any, ctx: HandlerContext): Promise<void> {
+    static async handleBecomeMentor(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
         try {
-            const result = await mentorshipService.registerAsMentor(
+            const { playerLevel = 20, sealedBonds = 10 } = data;
+            
+            // First ensure profile exists
+            await mentorshipService.getOrCreateProfile(connection.playerId, connection.playerName || 'Player');
+            
+            // Then qualify as mentor
+            const result = await mentorshipService.qualifyAsMentor(
                 connection.playerId,
-                connection.playerName || 'Player'
+                playerLevel,
+                sealedBonds
             );
 
             ctx.send(connection.ws, {
@@ -24,11 +31,10 @@ export class MentorshipHandlers {
             });
 
             if (result.success) {
-                notificationService.notify(connection.playerId, {
-                    type: 'achievement',
-                    title: 'Mentor Status!',
-                    message: 'You are now a mentor. Help guide new players!'
-                });
+                notificationService.notify(connection.playerId, 'achievement', 
+                    'You are now a mentor. Help guide new players!',
+                    { title: 'Mentor Status!' }
+                );
             }
         } catch (error) {
             console.error('Error becoming mentor:', error);
@@ -42,21 +48,31 @@ export class MentorshipHandlers {
         try {
             const { preferredMentorId } = data;
 
-            const result = await mentorshipService.requestMentor(
-                connection.playerId,
-                connection.playerName || 'Player',
-                preferredMentorId
-            );
+            // Find an available mentor
+            const mentors = await mentorshipService.findAvailableMentors(1);
+            const mentorId = preferredMentorId || (mentors.length > 0 ? mentors[0].playerId : null);
+            
+            if (!mentorId) {
+                ctx.send(connection.ws, {
+                    type: 'mentor_request_sent',
+                    data: { success: false, error: 'No mentors available' },
+                    timestamp: Date.now()
+                });
+                return;
+            }
+
+            // Assign the mentor
+            const result = await mentorshipService.assignMentor(connection.playerId, mentorId);
 
             ctx.send(connection.ws, {
                 type: 'mentor_request_sent',
-                data: result,
+                data: { ...result, mentorId },
                 timestamp: Date.now()
             });
 
-            if (result.success && result.mentorId) {
+            if (result.success) {
                 // Notify the mentor
-                const mentorConn = ctx.connections.get(result.mentorId);
+                const mentorConn = ctx.connections.get(mentorId);
                 if (mentorConn) {
                     ctx.send(mentorConn.ws, {
                         type: 'mentee_request',
@@ -68,11 +84,10 @@ export class MentorshipHandlers {
                     });
                 }
 
-                notificationService.notify(result.mentorId, {
-                    type: 'mentorship',
-                    title: 'New Mentee Request!',
-                    message: `${connection.playerName || 'A player'} wants you as their mentor!`
-                });
+                notificationService.notify(mentorId, 'social',
+                    `${connection.playerName || 'A player'} wants you as their mentor!`,
+                    { title: 'New Mentee Request!' }
+                );
             }
         } catch (error) {
             console.error('Error requesting mentor:', error);
@@ -80,44 +95,37 @@ export class MentorshipHandlers {
     }
 
     /**
-     * Accept a mentee request
+     * Accept a mentee request (mentor already assigned, this confirms)
      */
     static async handleAcceptMentee(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
         try {
             const { menteeId } = data;
             if (!menteeId) return;
 
-            const result = await mentorshipService.acceptMentee(
-                connection.playerId,
-                menteeId
-            );
-
+            // In this system, assignment is immediate - just confirm
             ctx.send(connection.ws, {
                 type: 'mentee_accepted',
-                data: result,
+                data: { success: true },
                 timestamp: Date.now()
             });
 
-            if (result.success) {
-                // Notify the mentee
-                const menteeConn = ctx.connections.get(menteeId);
-                if (menteeConn) {
-                    ctx.send(menteeConn.ws, {
-                        type: 'mentor_assigned',
-                        data: {
-                            mentorId: connection.playerId,
-                            mentorName: connection.playerName
-                        },
-                        timestamp: Date.now()
-                    });
-                }
-
-                notificationService.notify(menteeId, {
-                    type: 'mentorship',
-                    title: 'Mentor Found!',
-                    message: `${connection.playerName || 'A mentor'} has accepted you!`
+            // Notify the mentee
+            const menteeConn = ctx.connections.get(menteeId);
+            if (menteeConn) {
+                ctx.send(menteeConn.ws, {
+                    type: 'mentor_assigned',
+                    data: {
+                        mentorId: connection.playerId,
+                        mentorName: connection.playerName
+                    },
+                    timestamp: Date.now()
                 });
             }
+
+            notificationService.notify(menteeId, 'social',
+                `${connection.playerName || 'A mentor'} has accepted you!`,
+                { title: 'Mentor Found!' }
+            );
         } catch (error) {
             console.error('Error accepting mentee:', error);
         }
@@ -131,18 +139,16 @@ export class MentorshipHandlers {
             const { menteeId } = data;
             if (!menteeId) return;
 
-            const result = await mentorshipService.declineMentee(
-                connection.playerId,
-                menteeId
-            );
+            // Remove the mentorship
+            const success = await mentorshipService.removeMentor(menteeId);
 
             ctx.send(connection.ws, {
                 type: 'mentee_declined',
-                data: result,
+                data: { success },
                 timestamp: Date.now()
             });
 
-            if (result.success) {
+            if (success) {
                 // Notify the mentee
                 const menteeConn = ctx.connections.get(menteeId);
                 if (menteeConn) {
@@ -164,10 +170,10 @@ export class MentorshipHandlers {
     static async handleGetAvailableMentors(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
         try {
             const { limit } = data;
-            const mentors = await mentorshipService.getAvailableMentors(limit || 20);
+            const mentors = await mentorshipService.findAvailableMentors(limit || 20);
 
             // Add online status
-            const mentorsWithStatus = mentors.map((mentor: any) => ({
+            const mentorsWithStatus = mentors.map((mentor) => ({
                 ...mentor,
                 isOnline: ctx.connections.has(mentor.playerId)
             }));
@@ -187,18 +193,16 @@ export class MentorshipHandlers {
      */
     static async handleGetMentorshipStatus(connection: PlayerConnection, _data: any, ctx: HandlerContext): Promise<void> {
         try {
-            const status = await mentorshipService.getMentorshipStatus(connection.playerId);
-
-            // Add online status for mentor and mentees
-            if (status.mentor) {
-                status.mentor.isOnline = ctx.connections.has(status.mentor.playerId);
-            }
-            if (status.mentees) {
-                status.mentees = status.mentees.map((mentee: any) => ({
-                    ...mentee,
-                    isOnline: ctx.connections.has(mentee.playerId)
-                }));
-            }
+            const profile = await mentorshipService.getOrCreateProfile(connection.playerId, connection.playerName || 'Player');
+            
+            const status = {
+                isMentor: profile.isMentor,
+                mentorLevel: profile.mentorLevel,
+                currentMentor: profile.currentMentor,
+                activeMentees: profile.activeMentees,
+                menteesHelped: profile.menteesHelped,
+                rating: profile.rating
+            };
 
             ctx.send(connection.ws, {
                 type: 'mentorship_status',
@@ -215,22 +219,19 @@ export class MentorshipHandlers {
      */
     static async handleEndMentorship(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
         try {
-            const { targetId, reason } = data;
+            const { targetId } = data;
             if (!targetId) return;
 
-            const result = await mentorshipService.endMentorship(
-                connection.playerId,
-                targetId,
-                reason
-            );
+            // Remove the mentorship
+            const success = await mentorshipService.removeMentor(targetId);
 
             ctx.send(connection.ws, {
                 type: 'mentorship_ended',
-                data: result,
+                data: { success },
                 timestamp: Date.now()
             });
 
-            if (result.success) {
+            if (success) {
                 // Notify the other party
                 const targetConn = ctx.connections.get(targetId);
                 if (targetConn) {
@@ -244,11 +245,10 @@ export class MentorshipHandlers {
                     });
                 }
 
-                notificationService.notify(targetId, {
-                    type: 'mentorship',
-                    title: 'Mentorship Ended',
-                    message: `Your mentorship with ${connection.playerName || 'a player'} has ended.`
-                });
+                notificationService.notify(targetId, 'social',
+                    `Your mentorship with ${connection.playerName || 'a player'} has ended.`,
+                    { title: 'Mentorship Ended' }
+                );
             }
         } catch (error) {
             console.error('Error ending mentorship:', error);
@@ -264,8 +264,8 @@ export class MentorshipHandlers {
             if (!menteeId || !tipMessage) return;
 
             // Verify mentor relationship
-            const status = await mentorshipService.getMentorshipStatus(connection.playerId);
-            const isMentor = status.mentees?.some((m: any) => m.playerId === menteeId);
+            const profile = await mentorshipService.getOrCreateProfile(connection.playerId, connection.playerName || 'Player');
+            const isMentor = profile.activeMentees?.includes(menteeId);
 
             if (!isMentor) {
                 ctx.send(connection.ws, {
@@ -290,11 +290,10 @@ export class MentorshipHandlers {
                 });
             }
 
-            notificationService.notify(menteeId, {
-                type: 'mentorship',
-                title: 'Mentor Tip',
-                message: tipMessage.substring(0, 100)
-            });
+            notificationService.notify(menteeId, 'social',
+                tipMessage.substring(0, 100),
+                { title: 'Mentor Tip' }
+            );
 
             ctx.send(connection.ws, {
                 type: 'mentor_tip_sent',
@@ -314,18 +313,26 @@ export class MentorshipHandlers {
             const { targetId, rating, feedback } = data;
             if (!targetId || !rating) return;
 
-            const result = await mentorshipService.rateMentorship(
-                connection.playerId,
-                targetId,
-                Math.min(5, Math.max(1, rating)),
-                feedback?.substring(0, 500)
-            );
-
-            ctx.send(connection.ws, {
-                type: 'mentorship_rated',
-                data: result,
-                timestamp: Date.now()
-            });
+            // Get active session and end it with rating
+            const session = await mentorshipService.getActiveSession(connection.playerId);
+            if (session) {
+                const result = await mentorshipService.endSession(
+                    session.sessionId,
+                    Math.min(5, Math.max(1, rating)),
+                    feedback?.substring(0, 500)
+                );
+                ctx.send(connection.ws, {
+                    type: 'mentorship_rated',
+                    data: result,
+                    timestamp: Date.now()
+                });
+            } else {
+                ctx.send(connection.ws, {
+                    type: 'mentorship_rated',
+                    data: { success: false, error: 'No active session' },
+                    timestamp: Date.now()
+                });
+            }
         } catch (error) {
             console.error('Error rating mentorship:', error);
         }
@@ -336,17 +343,18 @@ export class MentorshipHandlers {
      */
     static async handleGetPendingMenteeRequests(connection: PlayerConnection, _data: any, ctx: HandlerContext): Promise<void> {
         try {
-            const requests = await mentorshipService.getPendingRequests(connection.playerId);
-
-            // Add online status
-            const requestsWithStatus = requests.map((req: any) => ({
-                ...req,
-                isOnline: ctx.connections.has(req.menteeId)
+            // Get the mentor's profile to see active mentees
+            const profile = await mentorshipService.getOrCreateProfile(connection.playerId, connection.playerName || 'Player');
+            
+            // Return active mentees as pending (in this system they're immediately assigned)
+            const requests = profile.activeMentees.map((menteeId: string) => ({
+                menteeId,
+                isOnline: ctx.connections.has(menteeId)
             }));
 
             ctx.send(connection.ws, {
                 type: 'pending_mentee_requests',
-                data: { requests: requestsWithStatus },
+                data: { requests },
                 timestamp: Date.now()
             });
         } catch (error) {

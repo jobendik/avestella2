@@ -47,6 +47,7 @@ import { HintPill, HINT_MESSAGES, useHintPill } from '@/components/ui/HintPill';
 import { NetworkStatusHUD } from '@/components/ui/NetworkStatusHUD';
 import { useAudio, useSnapshot, useQuests } from '@/hooks';
 import { useAnchoringTriggers } from '@/hooks/useAnchoringTriggers';
+import { gameClient } from '@/services/GameClient';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main App Layout
@@ -64,9 +65,10 @@ function AppLayout(): JSX.Element {
   // Anchoring system - watches for emotional peaks to prompt account creation
   useAnchoringTriggers();
 
-  // Simulated network stats (replace with real WebSocket latency in production)
-  const [latency, setLatency] = useState(45);
-  const [nearbyCount, setNearbyCount] = useState(0);
+  // Real network stats from WebSocket connection
+  const [latency, setLatency] = useState(gameClient.getLatency());
+  const [nearbyCount, setNearbyCount] = useState(gameClient.getNearbyPlayerCount());
+  const [isConnected, setIsConnected] = useState(gameClient.isConnected());
 
   // Start ambient loop on mount
   useEffect(() => {
@@ -74,13 +76,35 @@ function AppLayout(): JSX.Element {
     return () => stopAmbientLoop();
   }, [startAmbientLoop, stopAmbientLoop]);
 
-  // Simulate network stats updates (demo purposes)
+  // Subscribe to real network stats from GameClient
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLatency(30 + Math.random() * 40);
-      setNearbyCount(Math.floor(Math.random() * 5));
-    }, 3000);
-    return () => clearInterval(interval);
+    const handleLatencyUpdate = (data: { latency: number }) => {
+      setLatency(data.latency);
+    };
+    
+    const handleNearbyCountUpdate = (data: { count: number }) => {
+      setNearbyCount(data.count);
+    };
+    
+    const handleConnected = () => {
+      setIsConnected(true);
+    };
+    
+    const handleDisconnected = () => {
+      setIsConnected(false);
+    };
+
+    gameClient.on('latency_update', handleLatencyUpdate);
+    gameClient.on('nearby_count_update', handleNearbyCountUpdate);
+    gameClient.on('connected', handleConnected);
+    gameClient.on('disconnected', handleDisconnected);
+
+    return () => {
+      gameClient.off('latency_update', handleLatencyUpdate);
+      gameClient.off('nearby_count_update', handleNearbyCountUpdate);
+      gameClient.off('connected', handleConnected);
+      gameClient.off('disconnected', handleDisconnected);
+    };
   }, []);
 
   return (
@@ -119,7 +143,7 @@ function AppLayout(): JSX.Element {
       <div className="fixed bottom-4 right-4 flex items-center gap-3 px-3 py-2 bg-black/50 backdrop-blur-md rounded-lg border border-white/10 z-50 pointer-events-auto">
         <NetworkStatusHUD
           latency={latency}
-          isConnected={true}
+          isConnected={isConnected}
           nearbyCount={nearbyCount}
           visible={true}
           showCluster={false}

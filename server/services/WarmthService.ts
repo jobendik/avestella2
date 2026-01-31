@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { EventEmitter } from 'events';
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 // ============================================
 // WARMTH STATE MODEL
@@ -35,8 +35,8 @@ const WarmthStateSchema = new Schema<IWarmthState>({
     updatedAt: { type: Date, default: Date.now }
 }, { collection: 'warmthStates' });
 
-const WarmthState = mongoose.models.WarmthState || 
-    mongoose.model<IWarmthState>('WarmthState', WarmthStateSchema);
+const WarmthState = (mongoose.models.WarmthState || 
+    mongoose.model<IWarmthState>('WarmthState', WarmthStateSchema)) as Model<IWarmthState>;
 
 // ============================================
 // WARMTH/DARKNESS ZONES

@@ -126,11 +126,11 @@ describe('useGallery', () => {
   it('should load gallery stats', async () => {
     const { result } = renderHook(() => useGallery());
     
+    // Wait for async stats to be loaded
     await waitFor(() => {
-      expect(result.current.stats).toBeDefined();
-    });
+      expect(result.current.stats?.totalScreenshots).toBe(1);
+    }, { timeout: 1000 });
     
-    expect(result.current.stats?.totalScreenshots).toBe(1);
     expect(result.current.stats?.totalLikes).toBe(5);
   });
 

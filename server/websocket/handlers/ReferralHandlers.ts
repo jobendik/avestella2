@@ -12,14 +12,15 @@ export class ReferralHandlers {
      */
     static async handleGenerateCode(connection: PlayerConnection, _data: any, ctx: HandlerContext): Promise<void> {
         try {
-            const result = await referralService.generateReferralCode(
+            // getOrCreateReferralCode will create one if it doesn't exist
+            const codeData = await referralService.getOrCreateReferralCode(
                 connection.playerId,
                 connection.playerName || 'Player'
             );
 
             ctx.send(connection.ws, {
                 type: 'referral_code_generated',
-                data: result,
+                data: { success: true, code: codeData.code },
                 timestamp: Date.now()
             });
         } catch (error) {
@@ -47,8 +48,9 @@ export class ReferralHandlers {
                 return;
             }
 
-            const result = await referralService.applyReferralCode(
+            const result = await referralService.useReferralCode(
                 connection.playerId,
+                connection.playerName || 'Player',
                 code.toUpperCase()
             );
 
@@ -60,11 +62,10 @@ export class ReferralHandlers {
 
             if (result.success && result.referrerId) {
                 // Notify the referrer
-                notificationService.notify(result.referrerId, {
-                    type: 'referral',
-                    title: 'New Referral!',
-                    message: `${connection.playerName || 'Someone'} used your referral code!`
-                });
+                notificationService.notify(result.referrerId, 'social',
+                    `${connection.playerName || 'Someone'} used your referral code!`,
+                    { title: 'New Referral!' }
+                );
 
                 // If referrer is online, send them an update
                 const referrerConn = ctx.connections.get(result.referrerId);
@@ -111,17 +112,15 @@ export class ReferralHandlers {
      */
     static async handleGetReferredPlayers(connection: PlayerConnection, _data: any, ctx: HandlerContext): Promise<void> {
         try {
-            const referred = await referralService.getReferredPlayers(connection.playerId);
-
-            // Add online status
-            const referredWithStatus = referred.map((player: any) => ({
-                ...player,
-                isOnline: ctx.connections.has(player.playerId)
-            }));
+            // Get stats which includes referral count
+            const stats = await referralService.getReferralStats(connection.playerId);
 
             ctx.send(connection.ws, {
                 type: 'referred_players',
-                data: { players: referredWithStatus },
+                data: { 
+                    totalReferrals: stats.totalReferrals,
+                    conversions: stats.conversions
+                },
                 timestamp: Date.now()
             });
         } catch (error) {
@@ -132,28 +131,25 @@ export class ReferralHandlers {
     /**
      * Claim referral milestone reward
      */
-    static async handleClaimReferralReward(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
+    static async handleClaimReferralReward(connection: PlayerConnection, _data: any, ctx: HandlerContext): Promise<void> {
         try {
-            const { milestoneId } = data;
-            if (!milestoneId) return;
-
-            const result = await referralService.claimMilestoneReward(
-                connection.playerId,
-                milestoneId
-            );
+            const result = await referralService.checkAndAwardMilestones(connection.playerId);
 
             ctx.send(connection.ws, {
                 type: 'referral_reward_claimed',
-                data: result,
+                data: { 
+                    success: result.newMilestones.length > 0,
+                    milestones: result.newMilestones,
+                    rewards: result.rewards
+                },
                 timestamp: Date.now()
             });
 
-            if (result.success) {
-                notificationService.notify(connection.playerId, {
-                    type: 'reward',
-                    title: 'Referral Reward!',
-                    message: `You earned ${result.reward?.amount} ${result.reward?.type}!`
-                });
+            if (result.newMilestones.length > 0) {
+                notificationService.notify(connection.playerId, 'reward',
+                    `You earned ${result.rewards.stardust} stardust from referral milestones!`,
+                    { title: 'Referral Reward!' }
+                );
             }
         } catch (error) {
             console.error('Error claiming referral reward:', error);
@@ -165,7 +161,7 @@ export class ReferralHandlers {
      */
     static async handleGetMyReferralCode(connection: PlayerConnection, _data: any, ctx: HandlerContext): Promise<void> {
         try {
-            const codeInfo = await referralService.getPlayerReferralCode(connection.playerId);
+            const codeInfo = await referralService.getReferralCode(connection.playerId);
 
             ctx.send(connection.ws, {
                 type: 'my_referral_code',
@@ -185,15 +181,15 @@ export class ReferralHandlers {
             const { code } = data;
             if (!code) return;
 
-            const result = await referralService.validateCode(code.toUpperCase());
+            const codeInfo = await referralService.lookupCode(code.toUpperCase());
 
             ctx.send(connection.ws, {
                 type: 'referral_code_validated',
                 data: {
                     code: code.toUpperCase(),
-                    isValid: result.isValid,
-                    ownerName: result.ownerName,
-                    error: result.error
+                    isValid: !!codeInfo,
+                    ownerName: codeInfo?.ownerName,
+                    error: codeInfo ? null : 'Invalid or inactive code'
                 },
                 timestamp: Date.now()
             });

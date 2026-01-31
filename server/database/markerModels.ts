@@ -4,7 +4,7 @@
 // Phase 2.1: Map marker persistence
 // =============================================================================
 
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 // ============================================
 // MAP MARKER INTERFACE
@@ -244,14 +244,14 @@ MarkerPresetSchema.index({ playerId: 1, presetId: 1 }, { unique: true });
 // EXPORTS
 // ============================================
 
-export const MapMarker = mongoose.models.MapMarker || 
-    mongoose.model<IMapMarker>('MapMarker', MapMarkerSchema);
+export const MapMarker = (mongoose.models.MapMarker || 
+    mongoose.model<IMapMarker>('MapMarker', MapMarkerSchema)) as Model<IMapMarker>;
 
-export const MarkerShareInvite = mongoose.models.MarkerShareInvite || 
-    mongoose.model<IMarkerShareInvite>('MarkerShareInvite', MarkerShareInviteSchema);
+export const MarkerShareInvite = (mongoose.models.MarkerShareInvite || 
+    mongoose.model<IMarkerShareInvite>('MarkerShareInvite', MarkerShareInviteSchema)) as Model<IMarkerShareInvite>;
 
-export const MarkerPreset = mongoose.models.MarkerPreset || 
-    mongoose.model<IMarkerPreset>('MarkerPreset', MarkerPresetSchema);
+export const MarkerPreset = (mongoose.models.MarkerPreset || 
+    mongoose.model<IMarkerPreset>('MarkerPreset', MarkerPresetSchema)) as Model<IMarkerPreset>;
 
 // ============================================
 // HELPER TYPES

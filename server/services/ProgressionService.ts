@@ -12,6 +12,7 @@ import {
     Gift, IGift,
     GiftStreak, IGiftStreak
 } from '../database/socialModels.js';
+import { PlayerData } from '../database/playerDataModel.js';
 import { mongoPersistence } from './MongoPersistenceService.js';
 
 // ============================================
@@ -721,20 +722,41 @@ export class ProgressionService {
         }
 
         const guildId = `guild_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Get leader's player data for name
+        const leaderData = await PlayerData.findOne({ odaId: leaderId });
+        const leaderName = leaderData?.name || 'Leader';
+        
         const guild = new Guild({
             guildId,
             name,
             tag: tag.toUpperCase(),
             description: description || '',
+            icon: '⚔️',
+            color: '#7c3aed',
             leaderId,
-            officers: [],
-            members: [leaderId],
+            leaderName,
+            members: [{
+                playerId: leaderId,
+                playerName: leaderName,
+                role: 'leader',
+                joinedAt: new Date(),
+                contributions: { stardust: 0, challenges: 0, xp: 0 },
+                lastActiveAt: new Date()
+            }],
             level: 1,
             xp: 0,
+            xpToNextLevel: 1000,
             maxMembers: 20,
-            contributions: { stardust: 0, challenges: 0, xp: 0 },
-            bonuses: { xpBonus: 0.05, stardustBonus: 0, challengeBonus: 0 },
-            settings: { isPublic: true, minLevel: 1, autoAccept: false }
+            perks: [],
+            chat: [],
+            pendingInvites: [],
+            pendingApplications: [],
+            totalContributions: { stardust: 0, challenges: 0, xp: 0 },
+            weeklyContributions: { stardust: 0, challenges: 0, xp: 0, weekStart: new Date().toISOString().split('T')[0] },
+            isPublic: true,
+            minLevelToJoin: 1,
+            requiresApproval: false
         });
         await guild.save();
 
@@ -755,16 +777,32 @@ export class ProgressionService {
             return { success: false, error: 'Guild is full' };
         }
 
-        if (guild.members.includes(playerId)) {
+        // Check if already a member
+        const isMember = guild.members.some(m => m.playerId === playerId);
+        if (isMember) {
             return { success: false, error: 'Already a member' };
         }
 
-        guild.members.push(playerId);
+        // Get player data for name
+        const playerData = await PlayerData.findOne({ odaId: playerId });
+        const playerName = playerData?.name || 'Player';
+
+        guild.members.push({
+            playerId,
+            playerName,
+            role: 'member',
+            joinedAt: new Date(),
+            contributions: { stardust: 0, challenges: 0, xp: 0 },
+            lastActiveAt: new Date()
+        } as any);
         await guild.save();
 
+        // Calculate XP bonus based on guild level (5% + 1% per level, max 50%)
+        const xpBonus = Math.min(0.5, 0.05 + guild.level * 0.01);
+        
         await Progression.findOneAndUpdate(
             { playerId },
-            { $set: { guildId, guildBonus: guild.bonuses.xpBonus } }
+            { $set: { guildId, guildBonus: xpBonus } }
         );
 
         return { success: true };
@@ -778,18 +816,28 @@ export class ProgressionService {
 
         const guild = await Guild.findOne({ guildId: progression.guildId });
         if (guild) {
-            guild.members = guild.members.filter((m: string) => m !== playerId);
-            guild.officers = guild.officers.filter((o: string) => o !== playerId);
+            // Filter out the leaving member
+            guild.members = guild.members.filter(m => m.playerId !== playerId);
 
             // Transfer leadership if leader leaves
             if (guild.leaderId === playerId) {
-                if (guild.officers.length > 0) {
-                    guild.leaderId = guild.officers[0];
+                // Find officers first
+                const officers = guild.members.filter(m => m.role === 'officer');
+                if (officers.length > 0) {
+                    guild.leaderId = officers[0].playerId;
+                    guild.leaderName = officers[0].playerName;
+                    officers[0].role = 'leader';
                 } else if (guild.members.length > 0) {
-                    guild.leaderId = guild.members[0];
+                    guild.leaderId = guild.members[0].playerId;
+                    guild.leaderName = guild.members[0].playerName;
+                    guild.members[0].role = 'leader';
                 } else {
                     // Delete empty guild
                     await Guild.deleteOne({ guildId: guild.guildId });
+                    progression.guildId = null;
+                    progression.guildBonus = 0;
+                    await this.saveProgression(progression);
+                    return { success: true };
                 }
             }
             await guild.save();
@@ -819,26 +867,33 @@ export class ProgressionService {
             { guildId: progression.guildId },
             {
                 $inc: {
-                    'contributions.stardust': stardust,
+                    'totalContributions.stardust': stardust,
+                    'weeklyContributions.stardust': stardust,
                     xp: Math.floor(stardust / 10)
                 }
             },
             { new: true }
         );
 
-        // Level up guild if enough XP
+        // Update member contributions
         if (guild) {
-            const xpPerLevel = 1000 * guild.level;
-            while (guild.xp >= xpPerLevel && guild.level < 50) {
-                guild.xp -= xpPerLevel;
+            const memberIndex = guild.members.findIndex(m => m.playerId === playerId);
+            if (memberIndex !== -1) {
+                guild.members[memberIndex].contributions.stardust += stardust;
+                guild.members[memberIndex].lastActiveAt = new Date();
+            }
+            
+            // Level up guild if enough XP
+            while (guild.xp >= guild.xpToNextLevel && guild.level < 50) {
+                guild.xp -= guild.xpToNextLevel;
                 guild.level++;
+                guild.xpToNextLevel = 1000 * guild.level;
                 guild.maxMembers = 20 + guild.level * 2;
-                guild.bonuses.xpBonus = Math.min(0.5, 0.05 + guild.level * 0.01);
             }
             await guild.save();
         }
 
-        return { success: true, newContributions: guild?.contributions };
+        return { success: true, newContributions: guild?.totalContributions };
     }
 
     async getGuild(guildId: string): Promise<IGuild | null> {
@@ -851,7 +906,7 @@ export class ProgressionService {
                 { name: { $regex: query, $options: 'i' } },
                 { tag: { $regex: query, $options: 'i' } }
             ],
-            'settings.isPublic': true
+            isPublic: true
         }).limit(limit);
     }
 

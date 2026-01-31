@@ -11,7 +11,7 @@ import { PlayerData } from '../database/playerDataModel.js';
 import { Progression } from '../database/progressionModels.js';
 
 // Weekly/Monthly archive models
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 // ============================================
 // ARCHIVE MODELS
@@ -47,8 +47,8 @@ const LeaderboardArchiveSchema = new Schema<ILeaderboardArchive>({
     createdAt: { type: Date, default: Date.now }
 }, { collection: 'leaderboardArchives' });
 
-const LeaderboardArchive = mongoose.models.LeaderboardArchive || 
-    mongoose.model<ILeaderboardArchive>('LeaderboardArchive', LeaderboardArchiveSchema);
+const LeaderboardArchive = (mongoose.models.LeaderboardArchive || 
+    mongoose.model<ILeaderboardArchive>('LeaderboardArchive', LeaderboardArchiveSchema)) as Model<ILeaderboardArchive>;
 
 // ============================================
 // WEEKLY STATS MODEL
@@ -78,8 +78,8 @@ const WeeklyStatsSchema = new Schema<IWeeklyStats>({
 
 WeeklyStatsSchema.index({ playerId: 1, weekStart: 1 }, { unique: true });
 
-const WeeklyStats = mongoose.models.WeeklyStats || 
-    mongoose.model<IWeeklyStats>('WeeklyStats', WeeklyStatsSchema);
+const WeeklyStats = (mongoose.models.WeeklyStats || 
+    mongoose.model<IWeeklyStats>('WeeklyStats', WeeklyStatsSchema)) as Model<IWeeklyStats>;
 
 // ============================================
 // MONTHLY STATS MODEL
@@ -107,8 +107,8 @@ const MonthlyStatsSchema = new Schema<IMonthlyStats>({
 
 MonthlyStatsSchema.index({ playerId: 1, monthStart: 1 }, { unique: true });
 
-const MonthlyStats = mongoose.models.MonthlyStats || 
-    mongoose.model<IMonthlyStats>('MonthlyStats', MonthlyStatsSchema);
+const MonthlyStats = (mongoose.models.MonthlyStats || 
+    mongoose.model<IMonthlyStats>('MonthlyStats', MonthlyStatsSchema)) as Model<IMonthlyStats>;
 
 // ============================================
 // REWARD CONFIGURATION
@@ -584,12 +584,11 @@ class LeaderboardResetService extends EventEmitter {
             }
 
             // Send notification
-            await notificationService.sendNotification(playerId, {
-                type: `${periodType}_leaderboard_reward`,
-                title: `${periodType === 'weekly' ? 'Weekly' : 'Monthly'} Rank #${rank}!`,
-                message: `Congratulations! You earned ${reward.stardust} stardust and ${reward.xp} XP!`,
-                data: { rank, ...reward }
-            });
+            notificationService.notify(playerId, 'reward',
+                `Congratulations! You earned ${reward.stardust} stardust and ${reward.xp} XP!`,
+                { rank, ...reward },
+                { title: `${periodType === 'weekly' ? 'Weekly' : 'Monthly'} Rank #${rank}!` }
+            );
         } catch (error) {
             console.error(`Error awarding ${periodType} reward to ${playerId}:`, error);
         }
