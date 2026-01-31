@@ -1816,6 +1816,19 @@ export function GameCanvas(): JSX.Element {
     });
 
     // Draw AI agents (with viewport culling)
+    const playerAgentsForRender = state.aiAgents.filter(a => a.id.startsWith('player_'));
+    if (playerAgentsForRender.length > 0 && Math.random() < 0.005) {
+      console.log(`🖌️ Render: ${state.aiAgents.length} total agents, ${playerAgentsForRender.length} player agents`, 
+        playerAgentsForRender.map(a => ({ 
+          id: a.id.substring(0,15), 
+          x: Math.round(a.x), 
+          y: Math.round(a.y), 
+          realmId: a.realmId,
+          renderRealm,
+          inViewport: isInViewport(a.x, a.y, a.currentRadius || 50)
+        })));
+    }
+    
     state.aiAgents.forEach(agent => {
       // Filter by Realm
       if (agent.realmId && agent.realmId !== renderRealm) return;

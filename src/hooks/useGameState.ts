@@ -389,6 +389,13 @@ export function useGameState(): UseGameStateReturn {
       state.aiAgents = state.aiAgents.filter(
         agent => !agent.id.startsWith('player_') || remoteIds.has(agent.id)
       );
+      
+      // Debug: Log total agents with player IDs
+      const playerAgents = state.aiAgents.filter(a => a.id.startsWith('player_'));
+      if (playerAgents.length > 0 && Math.random() < 0.02) {
+        console.log(`🎮 Remote players in aiAgents: ${playerAgents.length}`, 
+          playerAgents.map(a => ({ id: a.id.substring(0, 20), x: a.x, y: a.y, realmId: a.realmId })));
+      }
     };
     
     (gameClient as any).on('world_state', handleWorldState);
