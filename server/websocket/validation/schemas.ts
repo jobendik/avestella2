@@ -822,6 +822,7 @@ export const messageSchemas: Record<string, z.ZodSchema> = {
 // Messages that don't require data validation (getters/queries with optional params)
 export const noDataRequiredMessages = new Set([
     'ping',
+    'request_world_state',
     'request_progression',
     'request_player_data',
     'get_friends',

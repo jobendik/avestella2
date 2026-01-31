@@ -28,7 +28,7 @@ const FriendActivitySchema = new Schema<IFriendActivity>({
     enum: ['levelUp', 'achievement', 'gift', 'online', 'bondFormed', 'milestone', 'questComplete', 'seasonTier', 'constellationFormed']
   },
   data: { type: Schema.Types.Mixed, default: {} },
-  timestamp: { type: Date, default: Date.now, index: true }
+  timestamp: { type: Date, default: Date.now }
 }, {
   collection: 'friend_activities'
 });

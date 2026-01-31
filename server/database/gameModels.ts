@@ -315,8 +315,7 @@ const SignalLogSchema = new Schema<ISignalLog>({
   },
   timestamp: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   }
 }, {
   collection: 'signal_logs'

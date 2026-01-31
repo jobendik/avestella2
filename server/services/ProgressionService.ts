@@ -5,11 +5,13 @@ import {
     DailyChallenge, IDailyChallenge,
     WeeklyChallenge, IWeeklyChallenge,
     Progression, IProgression,
-    Gift, IGift,
-    GiftStreak, IGiftStreak,
     Guild, IGuild,
     ActivityFeed, IActivityFeed
 } from '../database/progressionModels.js';
+import {
+    Gift, IGift,
+    GiftStreak, IGiftStreak
+} from '../database/socialModels.js';
 import { mongoPersistence } from './MongoPersistenceService.js';
 
 // ============================================

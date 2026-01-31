@@ -1,7 +1,6 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { loadFromStorage, saveToStorage } from '@/utils/storage';
-import { DEFAULT_GUILD, DEFAULT_EVENTS } from '@/constants/social';
 import type { Friend, FriendRequest, Guild, GameEvent } from '@/types';
 import { gameClient } from '@/services/GameClient';
 
@@ -127,7 +126,7 @@ const DEFAULT_STATE: SocialState = {
     guild: null,
     guildContributions: { stardust: 0, challenges: 0, xp: 0 },
     lastGuildContribution: null,
-    activeEvent: DEFAULT_EVENTS[0],
+    activeEvent: null, // No mock events - will be fetched from server
     eventProgress: { fragmentsCollected: 0, beaconsLit: 0, bondsFormed: 0 },
     unreadMessages: {},
     giftCooldowns: [],
@@ -144,9 +143,109 @@ const DEFAULT_STATE: SocialState = {
 export function useSocial(): UseSocialReturn {
     const [state, setState] = useState<SocialState>(DEFAULT_STATE);
 
+    // Helper to transform server guild data to frontend format
+    const transformServerGuild = (serverGuild: any): Guild => ({
+        id: serverGuild.guildId || serverGuild.id,
+        name: serverGuild.name,
+        tag: serverGuild.tag ? `[${serverGuild.tag}]` : '',
+        level: serverGuild.level || 1,
+        xp: serverGuild.xp || 0,
+        xpRequired: serverGuild.xpToNextLevel || 1000,
+        description: serverGuild.description || '',
+        totalContributions: serverGuild.totalContributions?.stardust || 0,
+        createdDays: serverGuild.createdAt 
+            ? Math.floor((Date.now() - new Date(serverGuild.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+            : 0,
+        members: (serverGuild.members || []).map((m: any) => ({
+            name: m.playerName || m.name,
+            avatar: '👤',
+            role: m.role === 'leader' ? '👑' : m.role === 'officer' ? '⚔️' : null,
+            level: m.level || 1,
+            contributions: m.contributions?.stardust || 0,
+            online: m.online || false,
+            lastSeen: m.lastActiveAt ? formatLastSeen(m.lastActiveAt) : undefined
+        })),
+        perks: (serverGuild.perks || []).map((p: any) => ({
+            name: p.name,
+            icon: p.icon || '✨',
+            description: p.description || ''
+        })),
+        chat: (serverGuild.chat || []).map((c: any) => ({
+            avatar: '👤',
+            name: c.playerName,
+            role: c.playerRole === 'leader' ? '👑' : c.playerRole === 'officer' ? '⚔️' : null,
+            message: c.message,
+            time: formatLastSeen(c.timestamp)
+        }))
+    });
+
+    // Helper to format timestamps
+    const formatLastSeen = (timestamp: string | Date): string => {
+        const diff = Date.now() - new Date(timestamp).getTime();
+        const minutes = Math.floor(diff / 60000);
+        if (minutes < 1) return 'just now';
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        return `${days}d ago`;
+    };
+
     // Load from local storage on mount (for chats/history)
     useEffect(() => {
         loadSocialData();
+    }, []);
+
+    // Request guild and events info when connected
+    useEffect(() => {
+        const onConnected = () => {
+            // Request player's guild info on connection
+            gameClient.requestGuildInfo();
+            // Request active world events
+            gameClient.requestWorldEvents();
+        };
+
+        gameClient.on('connected', onConnected);
+        
+        // If already connected, request immediately
+        if (gameClient.isConnected()) {
+            gameClient.requestGuildInfo();
+            gameClient.requestWorldEvents();
+        }
+
+        return () => {
+            // Cleanup would remove listener
+        };
+    }, []);
+
+    // Listen to GameClient events
+    useEffect(() => {
+        // Handle world events from server
+        const onWorldEvents = (data: any) => {
+            if (data.events && data.events.length > 0) {
+                // Transform server events to frontend format
+                const event = data.events[0]; // Use first active event
+                setState(prev => ({
+                    ...prev,
+                    activeEvent: {
+                        id: event.id,
+                        name: event.name,
+                        description: event.description,
+                        icon: event.icon || '⭐',
+                        duration: event.duration || 24,
+                        endTime: event.endTime || Date.now() + 24 * 60 * 60 * 1000,
+                        goals: event.goals || [],
+                        leaderboardRewards: event.leaderboardRewards || []
+                    }
+                }));
+            }
+        };
+
+        gameClient.on('world_events', onWorldEvents);
+
+        return () => {
+            // Cleanup
+        };
     }, []);
 
     // Listen to GameClient events
@@ -160,15 +259,16 @@ export function useSocial(): UseSocialReturn {
                         id: f.id,
                         name: f.name,
                         avatar: '👤', // Default
-                        level: 1, // Default
-                        online: false, // Default
-                        stardust: 0 // Default
+                        level: f.level || 1,
+                        online: f.online || false,
+                        stardust: f.stardust || 0
                     }));
                     return { ...prev, friends: serverFriends };
                 });
             }
-            if (data.guild) {
-                // Handle guild data if provided
+            // If player data includes guild info, use it
+            if (data.guildId) {
+                gameClient.requestGuildInfo(data.guildId);
             }
         };
 
@@ -267,7 +367,41 @@ export function useSocial(): UseSocialReturn {
         gameClient.on('friend_added', onFriendAdded);
         gameClient.on('friend_removed', onFriendRemoved);
 
-        // Guild events
+        // Guild events - receive guild info from server
+        gameClient.on('guild_info', (data: any) => {
+            if (data.guild) {
+                setState(prev => ({
+                    ...prev,
+                    guild: transformServerGuild(data.guild)
+                }));
+            }
+        });
+
+        // Guild created - player just created a guild
+        gameClient.on('guild_created', (data: any) => {
+            // Request full guild info after creation
+            gameClient.requestGuildInfo(data.guildId);
+        });
+
+        // Guild joined - player joined a guild
+        gameClient.on('guild_joined', (data: any) => {
+            if (data.guild) {
+                setState(prev => ({
+                    ...prev,
+                    guild: transformServerGuild(data.guild)
+                }));
+            }
+        });
+
+        // Guild left - player left their guild
+        gameClient.on('guild_left', () => {
+            setState(prev => ({
+                ...prev,
+                guild: null,
+                guildContributions: { stardust: 0, challenges: 0, xp: 0 }
+            }));
+        });
+
         gameClient.on('guild_contribution_success', (data: any) => {
             setState(prev => ({
                 ...prev,

@@ -5,7 +5,8 @@ export { Echo, Message, LitStar, Player, Friendship, Beacon, EventProgress, Feed
 export type { IEcho, IMessage, ILitStar, IPlayer, IFriendship, IBeacon, IEventProgress, IFeedback } from './models';
 
 // Progression and Social models
-DailyChallenge,
+export {
+    DailyChallenge,
     WeeklyChallenge,
     Progression,
     Guild,
@@ -20,7 +21,8 @@ export type {
 } from './progressionModels';
 
 // Social and Economy models
-Reputation,
+export {
+    Reputation,
     ReferralCode,
     Referral,
     MentorProfile,

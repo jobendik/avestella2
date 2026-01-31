@@ -199,6 +199,10 @@ class GameClient extends EventEmitter {
         this.send('guild_action', { action: 'list' });
     }
 
+    public requestGuildInfo(guildId?: string) {
+        this.send('guild_action', { action: 'info', guildId });
+    }
+
     public contributeToGuild(type: 'stardust' | 'xp' | 'challenges', amount: number, guildId?: string) {
         this.send('guild_action', {
             action: 'contribute',
@@ -210,6 +214,10 @@ class GameClient extends EventEmitter {
 
     public requestWorldState() {
         this.send('request_world_state', {});
+    }
+
+    public requestWorldEvents() {
+        this.send('request_world_events', {});
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

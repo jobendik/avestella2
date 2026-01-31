@@ -1,5 +1,6 @@
 // MongoDB models for progression and social systems
 import mongoose, { Schema, Document, Model } from 'mongoose';
+import { Guild } from './guildModels.js';
 
 // ============================================
 // DAILY CHALLENGE MODEL
@@ -236,85 +237,8 @@ export const Progression: Model<IProgression> = mongoose.model<IProgression>('Pr
 // GUILD MODEL
 // ============================================
 
-export interface IGuild extends Document {
-    guildId: string;
-    name: string;
-    tag: string;              // 3-4 letter tag
-    description: string;
-    leaderId: string;
-    officers: string[];
-    members: string[];
-    level: number;
-    xp: number;
-    maxMembers: number;
-    contributions: {
-        stardust: number;
-        challenges: number;
-        xp: number;
-    };
-    bonuses: {
-        xpBonus: number;       // 0.0 - 0.5
-        stardustBonus: number;
-        challengeBonus: number;
-    };
-    settings: {
-        isPublic: boolean;
-        minLevel: number;
-        autoAccept: boolean;
-    };
-    createdAt: Date;
-    updatedAt: Date;
-}
-
-const GuildSchema = new Schema<IGuild>({
-    guildId: {
-        type: String,
-        required: true,
-        unique: true,
-        index: true
-    },
-    name: {
-        type: String,
-        required: true,
-        unique: true,
-        maxlength: 30
-    },
-    tag: {
-        type: String,
-        required: true,
-        unique: true,
-        minlength: 2,
-        maxlength: 4,
-        uppercase: true
-    },
-    description: { type: String, maxlength: 200, default: '' },
-    leaderId: { type: String, required: true, index: true },
-    officers: { type: [String], default: [] },
-    members: { type: [String], default: [] },
-    level: { type: Number, default: 1, min: 1 },
-    xp: { type: Number, default: 0, min: 0 },
-    maxMembers: { type: Number, default: 20 },
-    contributions: {
-        stardust: { type: Number, default: 0 },
-        challenges: { type: Number, default: 0 },
-        xp: { type: Number, default: 0 }
-    },
-    bonuses: {
-        xpBonus: { type: Number, default: 0, min: 0, max: 0.5 },
-        stardustBonus: { type: Number, default: 0, min: 0, max: 0.3 },
-        challengeBonus: { type: Number, default: 0, min: 0, max: 0.2 }
-    },
-    settings: {
-        isPublic: { type: Boolean, default: true },
-        minLevel: { type: Number, default: 1 },
-        autoAccept: { type: Boolean, default: false }
-    }
-}, {
-    timestamps: true,
-    collection: 'guilds'
-});
-
-export const Guild: Model<IGuild> = mongoose.model<IGuild>('Guild', GuildSchema);
+// Guild model moved to guildModels.ts to avoid duplication
+export { Guild, type IGuild } from './guildModels.js';
 
 // ============================================
 // ACTIVITY FEED MODEL

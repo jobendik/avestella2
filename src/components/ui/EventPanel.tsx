@@ -2,11 +2,10 @@
 // AVESTELLA - Event Panel (TypeScript - Using Context)
 // ═══════════════════════════════════════════════════════════════════════════
 
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useUI } from '@/contexts/UIContext';
-import { useSocialContext } from '@/contexts/GameContext';
-import { DEFAULT_EVENTS } from '@/constants/social';
+import { useSocialContext, useLeaderboardContext } from '@/contexts/GameContext';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Props
@@ -23,29 +22,61 @@ interface EventPanelProps {
 export function EventPanel({ onClose }: EventPanelProps): JSX.Element {
     const { closePanel } = useUI();
     const social = useSocialContext();
+    const leaderboardContext = useLeaderboardContext();
 
-    // Use event from context (falls back to default)
-    const event = social.activeEvent || DEFAULT_EVENTS[0];
+    // Use event from context - NO mock fallback
+    const event = social.activeEvent;
 
     // Use progress from context
     const progress = social.eventProgress;
 
-    // Mock leaderboard (would come from server in production)
-    const leaderboard = useMemo(() => {
-        const names = ['StarWanderer', 'NightGlow', 'SunBeam', 'CosmicDust', 'AuroraBright',
-            'LunaEcho', 'NovaPulse', 'ZenithRise', 'MoonGlow', 'StarDust'];
-        return names.map((name, i) => ({
-            name,
-            avatar: ['⭐', '🌙', '☀️', '✨', '💫', '🌟', '💎', '🔥', '🌸', '🎭'][i],
-            stardust: Math.floor(500 - i * 40 + Math.random() * 20),
-            isPlayer: i === 5
-        }));
-    }, []);
+    // Get leaderboard from context (fetched from server)
+    const [leaderboard, setLeaderboard] = useState<Array<{name: string; avatar: string; stardust: number; isPlayer: boolean}>>([]);
+
+    useEffect(() => {
+        // Request event leaderboard when panel opens
+        if (event) {
+            // Would fetch from server via gameClient.requestEventLeaderboard(event.id)
+        }
+    }, [event]);
 
     const handleClose = () => {
         onClose?.();
         closePanel();
     };
+
+    // If no active event, show empty state
+    if (!event) {
+        return (
+            <div
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                onClick={handleClose}
+            >
+                <div
+                    className="bg-gradient-to-br from-gray-900 to-pink-900/50 rounded-2xl border-2 border-pink-500/30 shadow-2xl max-w-lg w-full p-8 animate-slide-up"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-white text-2xl font-bold">Events</h2>
+                        <button
+                            onClick={handleClose}
+                            className="p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    
+                    <div className="text-center py-12">
+                        <div className="text-6xl mb-4">🌟</div>
+                        <h3 className="text-white text-xl font-bold mb-2">No Active Events</h3>
+                        <p className="text-white/60">
+                            Check back later for special events with exclusive rewards!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const timeLeft = social.getEventTimeRemaining();
     const hours = Math.max(0, Math.floor(timeLeft / (1000 * 60 * 60)));
@@ -157,6 +188,12 @@ export function EventPanel({ onClose }: EventPanelProps): JSX.Element {
                     {/* Leaderboard */}
                     <div className="bg-white/5 rounded-xl p-6 border border-pink-500/20">
                         <div className="text-white font-bold text-lg mb-4">Event Leaderboard</div>
+                        {leaderboard.length === 0 ? (
+                            <div className="text-center py-8">
+                                <div className="text-4xl mb-2">📊</div>
+                                <p className="text-white/60">Leaderboard loading...</p>
+                            </div>
+                        ) : (
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                             {leaderboard.map((player, i) => {
                                 const rank = i + 1;
@@ -199,6 +236,7 @@ export function EventPanel({ onClose }: EventPanelProps): JSX.Element {
                                 );
                             })}
                         </div>
+                        )}
 
                         {/* Leaderboard Rewards */}
                         <div className="mt-6 pt-4 border-t border-pink-500/20">

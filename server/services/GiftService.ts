@@ -1,11 +1,12 @@
 // =============================================================================
 // Gift Service - Manages player-to-player gift sending and receiving
 // =============================================================================
-// REFACTORED: Uses models from progressionModels.ts to avoid Mongoose conflicts
+// REFACTORED: Uses models from socialModels.ts for Gift/GiftStreak
 // =============================================================================
 
 import { EventEmitter } from 'events';
-import { Gift, GiftStreak, Progression, type IGift, type IGiftStreak } from '../database/progressionModels.js';
+import { Progression } from '../database/progressionModels.js';
+import { Gift, GiftStreak, type IGift, type IGiftStreak } from '../database/socialModels.js';
 import { PlayerData } from '../database/playerDataModel.js';
 import { cosmeticsService } from './CosmeticsService.js';
 

@@ -6,7 +6,6 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useUI } from '@/contexts/UIContext';
 import { useProgressionContext, useSocialContext } from '@/contexts/GameContext';
-import { DEFAULT_GUILD } from '@/constants/social';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -28,9 +27,12 @@ export function GuildPanel({ onClose }: GuildPanelProps): JSX.Element {
     const social = useSocialContext();
     const [activeTab, setActiveTab] = useState<GuildTab>('overview');
     const [messageInput, setMessageInput] = useState('');
+    const [showCreateGuild, setShowCreateGuild] = useState(false);
+    const [newGuildName, setNewGuildName] = useState('');
+    const [newGuildTag, setNewGuildTag] = useState('');
 
-    // Use guild from context (falls back to default)
-    const guild = social.guild || DEFAULT_GUILD;
+    // Use guild from context - NO fallback to mock data
+    const guild = social.guild;
     const contributions = social.guildContributions;
 
     const handleClose = () => {
@@ -54,6 +56,107 @@ export function GuildPanel({ onClose }: GuildPanelProps): JSX.Element {
             social.contributeToGuild('daily');
         }
     };
+
+    // If no guild, show empty state with create/join options
+    if (!guild) {
+        return (
+            <div
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                onClick={handleClose}
+            >
+                <div
+                    className="bg-gradient-to-br from-gray-900 to-purple-900/50 rounded-2xl border-2 border-purple-500/30 shadow-2xl max-w-lg w-full p-8 animate-slide-up"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-white text-2xl font-bold">Guilds</h2>
+                        <button
+                            onClick={handleClose}
+                            className="p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    
+                    <div className="text-center py-8">
+                        <div className="text-6xl mb-4">🛡️</div>
+                        <h3 className="text-white text-xl font-bold mb-2">No Guild Yet</h3>
+                        <p className="text-white/60 mb-6">
+                            Join a guild to unlock perks, chat with members, and contribute to shared goals!
+                        </p>
+                        
+                        {!showCreateGuild ? (
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => setShowCreateGuild(true)}
+                                    className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg transition-colors"
+                                >
+                                    Create a Guild
+                                </button>
+                                <button
+                                    onClick={() => {/* Would open guild browser */}}
+                                    className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-colors"
+                                >
+                                    Browse Guilds
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 text-left">
+                                <div>
+                                    <label className="text-white/70 text-sm">Guild Name</label>
+                                    <input
+                                        type="text"
+                                        value={newGuildName}
+                                        onChange={(e) => setNewGuildName(e.target.value)}
+                                        placeholder="Enter guild name..."
+                                        className="w-full mt-1 px-4 py-2 bg-white/10 border border-purple-400/30 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-purple-400"
+                                        maxLength={24}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-white/70 text-sm">Tag (2-5 chars)</label>
+                                    <input
+                                        type="text"
+                                        value={newGuildTag}
+                                        onChange={(e) => setNewGuildTag(e.target.value.toUpperCase())}
+                                        placeholder="TAG"
+                                        className="w-full mt-1 px-4 py-2 bg-white/10 border border-purple-400/30 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-purple-400"
+                                        maxLength={5}
+                                    />
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setShowCreateGuild(false)}
+                                        className="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (newGuildName.length >= 3 && newGuildTag.length >= 2) {
+                                                // TODO: Call gameClient.createGuild
+                                                import('@/services/GameClient').then(({ gameClient }) => {
+                                                    gameClient.send('guild_action', {
+                                                        action: 'create',
+                                                        guildName: newGuildName,
+                                                        guildTag: newGuildTag
+                                                    });
+                                                });
+                                            }
+                                        }}
+                                        disabled={newGuildName.length < 3 || newGuildTag.length < 2}
+                                        className="flex-1 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors"
+                                    >
+                                        Create
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const tabs: GuildTab[] = ['overview', 'members', 'chat', 'contributions'];
 
