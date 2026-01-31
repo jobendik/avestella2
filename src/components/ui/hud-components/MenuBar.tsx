@@ -1,0 +1,226 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// AVESTELLA - Menu Bar Component
+// Grouped dropdown menus for panel access
+// ═══════════════════════════════════════════════════════════════════════════
+
+import React, { useState } from 'react';
+import {
+  Users, Heart, Trophy, Award, Gift, Shield, Target, Book, Scroll,
+  Settings as SettingsIcon, ShoppingBag, Dog, Image, ChevronDown, Globe,
+  MessageSquarePlus, Anchor, Sparkles
+} from 'lucide-react';
+import { useSocialContext, useDailyChallengesContext } from '@/contexts/GameContext';
+import { useUI } from '@/contexts/UIContext';
+import { useAnchoringContext } from '@/contexts/AnchoringContext';
+
+interface MenuItemProps {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  badge?: string;
+}
+
+function MenuItem({ icon, label, onClick, badge }: MenuItemProps): JSX.Element {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 w-full px-3 py-2 hover:bg-white/10 rounded-lg transition-colors text-left"
+    >
+      <span className="text-white/60">{icon}</span>
+      <span className="text-white/80 text-sm">{label}</span>
+      {badge && (
+        <span className="ml-auto w-4 h-4 bg-red-500 rounded-full text-[9px] flex items-center justify-center text-white font-bold">
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// Anchor menu item with context-aware display
+function AnchorMenuItem(): JSX.Element {
+  const { isAnchored, triggerAnchorPrompt } = useAnchoringContext();
+
+  if (isAnchored) {
+    return (
+      <div className="flex items-center gap-2 w-full px-3 py-2 text-left">
+        <span className="text-emerald-400"><Shield size={14} /></span>
+        <span className="text-emerald-300/80 text-sm">Anchored</span>
+        <span className="ml-auto text-[10px] text-emerald-400/60">🔵</span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => triggerAnchorPrompt('manual')}
+      className="flex items-center gap-2 w-full px-3 py-2 hover:bg-white/10 rounded-lg transition-colors text-left group"
+    >
+      <span className="text-indigo-400"><Anchor size={14} /></span>
+      <span className="text-indigo-300/80 text-sm">Anchor</span>
+      <Sparkles size={12} className="ml-auto text-indigo-400/60 group-hover:text-indigo-400 transition-colors" />
+    </button>
+  );
+}
+
+interface MenuDropdownProps {
+  label: string;
+  icon: React.ReactNode;
+  iconColor: string;
+  children: React.ReactNode;
+  badge?: string;
+}
+
+function MenuDropdown({ label, icon, iconColor, children, badge }: MenuDropdownProps): JSX.Element {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors ${iconColor}`}
+      >
+        {icon}
+        <span className="text-white/60 text-xs hidden sm:inline">{label}</span>
+        <ChevronDown size={12} className={`text-white/40 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        {badge && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[8px] flex items-center justify-center text-white font-bold border border-black">
+            {badge}
+          </span>
+        )}
+      </button>
+
+      {isOpen && (
+        <>
+          {/* Backdrop to close dropdown */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
+          />
+          {/* Dropdown menu */}
+          <div className="absolute top-full right-0 mt-1 bg-black/90 backdrop-blur-md rounded-xl border border-white/10 shadow-xl z-50 min-w-[160px] py-1">
+            {children}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function MenuBar(): JSX.Element {
+  const { friends, friendRequests, activeEvent, getUnreadCount, guild } = useSocialContext();
+  const { completedToday } = useDailyChallengesContext();
+  const { togglePanel } = useUI();
+
+  const unreadMessageCount = getUnreadCount();
+  const socialBadge = unreadMessageCount > 0 ? String(unreadMessageCount) : friendRequests.length > 0 ? String(friendRequests.length) : undefined;
+  const challengeBadge = completedToday < 3 ? String(3 - completedToday) : undefined;
+
+  return (
+    <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-1 rounded-xl border border-white/10 shadow-lg">
+      {/* Social Group */}
+      <MenuDropdown label="Social" icon={<Users size={16} />} iconColor="text-cyan-400" badge={socialBadge}>
+        <MenuItem
+          icon={<Globe size={14} className="text-cyan-400" />}
+          label="Cosmos"
+          onClick={() => togglePanel('cosmos')}
+        />
+        <MenuItem
+          icon={<Users size={14} className="text-cyan-400" />}
+          label="Friends"
+          onClick={() => togglePanel('friends')}
+          badge={socialBadge}
+        />
+        <MenuItem
+          icon={<Shield size={14} className="text-emerald-400" />}
+          label="Constellations"
+          onClick={() => togglePanel('guild')}
+        />
+        {activeEvent && (
+          <MenuItem
+            icon={<Heart size={14} className="text-pink-400" />}
+            label="Events"
+            onClick={() => togglePanel('events')}
+            badge="!"
+          />
+        )}
+      </MenuDropdown>
+
+      {/* Progress Group */}
+      <MenuDropdown label="Progress" icon={<Trophy size={16} />} iconColor="text-yellow-400" badge={challengeBadge}>
+        <MenuItem
+          icon={<Scroll size={14} className="text-purple-400" />}
+          label="Quests"
+          onClick={() => togglePanel('quests')}
+        />
+        <MenuItem
+          icon={<Target size={14} className="text-green-400" />}
+          label="Challenges"
+          onClick={() => togglePanel('challenges')}
+          badge={challengeBadge}
+        />
+        <MenuItem
+          icon={<Trophy size={14} className="text-yellow-400" />}
+          label="Achievements"
+          onClick={() => togglePanel('achievements')}
+        />
+        <MenuItem
+          icon={<Award size={14} className="text-blue-400" />}
+          label="Leaderboard"
+          onClick={() => togglePanel('leaderboard')}
+        />
+        <MenuItem
+          icon={<Book size={14} className="text-cyan-400" />}
+          label="Journal"
+          onClick={() => togglePanel('journal')}
+        />
+      </MenuDropdown>
+
+      {/* Collection Group */}
+      <MenuDropdown label="Collection" icon={<ShoppingBag size={16} />} iconColor="text-purple-400">
+        <MenuItem
+          icon={<ShoppingBag size={14} className="text-purple-400" />}
+          label="Shop"
+          onClick={() => togglePanel('shop')}
+        />
+        <MenuItem
+          icon={<Dog size={14} className="text-pink-400" />}
+          label="Companions"
+          onClick={() => togglePanel('companions')}
+        />
+        <MenuItem
+          icon={<Image size={14} className="text-indigo-400" />}
+          label="Collectibles"
+          onClick={() => togglePanel('collectibles')}
+        />
+        <MenuItem
+          icon={<Image size={14} className="text-pink-400" />}
+          label="Gallery"
+          onClick={() => togglePanel('gallery')}
+        />
+      </MenuDropdown>
+
+      {/* Rewards & Settings */}
+      <MenuDropdown label="More" icon={<Gift size={16} />} iconColor="text-orange-400">
+        <MenuItem
+          icon={<Gift size={14} className="text-orange-400" />}
+          label="Daily Rewards"
+          onClick={() => togglePanel('dailyRewards')}
+        />
+        <AnchorMenuItem />
+        <MenuItem
+          icon={<MessageSquarePlus size={14} className="text-purple-400" />}
+          label="Send Feedback"
+          onClick={() => togglePanel('feedback')}
+        />
+        <MenuItem
+          icon={<SettingsIcon size={14} className="text-white/60" />}
+          label="Settings"
+          onClick={() => togglePanel('settings')}
+        />
+      </MenuDropdown>
+    </div>
+  );
+}
+
+export default MenuBar;

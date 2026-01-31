@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # The Game Server (Frontend + Backend)
+  app:
+    container_name: avestella-game
+    build: .
+    restart: always
+    ports:
+      - "80:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      # Connect to the mongo service defined below
+      - MONGODB_URI=mongodb://mongo:27017/aura
+    depends_on:
+      - mongo
+    networks:
+      - game-network
+
+  # The Database
+  mongo:
+    container_name: avestella-mongo
+    image: mongo:6
+    restart: always
+    volumes:
+      # Persist data to the host machine
+      - mongo-data:/data/db
+    networks:
+      - game-network
+
+networks:
+  game-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
