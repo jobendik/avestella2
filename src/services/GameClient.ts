@@ -37,8 +37,8 @@ class GameClient extends EventEmitter {
         super();
         // Detect production vs dev
         if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-            // Production URL - update this when you have a domain
-            this.url = `wss://${window.location.host}/ws`;
+            // Production URL - always use avestella.com
+            this.url = `wss://avestella.com/ws`;
         }
     }
 

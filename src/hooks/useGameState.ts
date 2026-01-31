@@ -347,11 +347,16 @@ export function useGameState(): UseGameStateReturn {
     gameClient.connect(playerId, (state.currentRealm || DEFAULT_REALM) as RealmId);
 
     // Listen for world state updates (contains all remote players)
-    (gameClient as any).on('world_state', (data: any) => {
-      if (!data?.players) return;
+    const handleWorldState = (data: any) => {
+      if (!data?.players) {
+        console.log('🌍 world_state: no players in data', data);
+        return;
+      }
       
       const state = gameState.current;
       const remotePlayers = data.players.filter((p: any) => p.id !== playerId);
+      
+      console.log(`🌍 world_state: ${data.players.length} total, ${remotePlayers.length} remote players`);
       
       // Update or add remote players
       for (const playerData of remotePlayers) {
@@ -364,6 +369,7 @@ export function useGameState(): UseGameStateReturn {
           agent.y = playerData.y;
         } else {
           // Add new remote player as an "Agent"
+          console.log(`🌍 Adding remote player: ${playerData.id} at (${playerData.x}, ${playerData.y})`);
           const hueToColor = (hue: number) => `hsl(${hue}, 70%, 60%)`;
           const newAgent = new AIAgent(
             playerData.x, 
@@ -383,10 +389,12 @@ export function useGameState(): UseGameStateReturn {
       state.aiAgents = state.aiAgents.filter(
         agent => !agent.id.startsWith('player_') || remoteIds.has(agent.id)
       );
-    });
+    };
+    
+    (gameClient as any).on('world_state', handleWorldState);
 
     // Listen for individual player updates (fallback/legacy)
-    (gameClient as any).on('player_update', (data: any) => {
+    const handlePlayerUpdate = (data: any) => {
       if (!data || data.id === playerId) return; // Ignore self
 
       const state = gameState.current;
@@ -407,7 +415,15 @@ export function useGameState(): UseGameStateReturn {
         // Override to mark as remote player if AIAgent supports it, or just rely on ID
         state.aiAgents.push(newAgent);
       }
-    });
+    };
+    
+    (gameClient as any).on('player_update', handlePlayerUpdate);
+    
+    // Cleanup on unmount
+    return () => {
+      (gameClient as any).off('world_state', handleWorldState);
+      (gameClient as any).off('player_update', handlePlayerUpdate);
+    };
 
   }, [playerId]);
 
