@@ -6,6 +6,12 @@ import crypto from 'crypto';
 import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+// Load environment variables from root .env file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 import { setupWebSocket } from './websocket/WebSocketHandler';
 import { mongoPersistence } from './services/MongoPersistenceService';
 import { progressionService } from './services/ProgressionService';
@@ -99,8 +105,6 @@ function generateId(): string {
     return crypto.randomBytes(8).toString('hex');
 }
 
-dotenv.config();
-
 const app = express();
 const server = createServer(app);
 const PORT = process.env.PORT || 3001;
@@ -166,9 +170,6 @@ app.use(express.json({ limit: '10kb' })); // Limit body size to 10KB
 app.use(generalLimiter);
 
 // Serve static files in production
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 // Check if public folder exists (production)
 // Or serves from ../dist (if running locally with separate build)
 const staticPath = path.join(__dirname, 'public');

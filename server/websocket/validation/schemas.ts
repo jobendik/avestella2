@@ -455,8 +455,22 @@ export const joinGuildSchema = z.object({
 });
 
 export const guildActionSchema = z.object({
-    action: z.enum(['promote', 'demote', 'kick', 'invite', 'leave', 'transfer', 'disband', 'update']),
+    action: z.enum([
+        // Query actions
+        'info', 'list', 'get_gifts',
+        // Lifecycle actions  
+        'create', 'join', 'leave', 'disband',
+        // Management actions
+        'promote', 'demote', 'kick', 'invite', 'transfer', 'update',
+        // Gift/contribution actions
+        'claim_gift', 'contribute'
+    ]),
     targetId: playerId.optional(),
+    guildId: idField.optional(),
+    guildName: z.string().min(3).max(32).optional(),
+    guildTag: z.string().min(2).max(5).optional(),
+    guildDescription: z.string().max(500).optional(),
+    giftId: idField.optional(),
     data: z.record(z.unknown()).optional()
 });
 
