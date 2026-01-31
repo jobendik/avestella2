@@ -203,7 +203,11 @@ export class DarknessService extends EventEmitter {
                 state.phase = 'warning';
                 state.timeRemaining = config.warningDuration;
                 state.nextPhase = 'active';
-                this.emit('darkness_warning', { realm, waveNumber: state.waveNumber + 1 });
+                this.emit('darkness_warning', { 
+                    realm, 
+                    waveNumber: state.waveNumber + 1,
+                    warningDuration: config.warningDuration
+                });
                 console.log(`⚠️ Darkness warning in ${realm}!`);
                 break;
 
@@ -226,11 +230,12 @@ export class DarknessService extends EventEmitter {
                 state.phase = 'cooldown';
                 state.timeRemaining = config.cooldownDuration;
                 state.nextPhase = 'calm';
-                this.emit('darkness_ending', {
+                this.emit('darkness_ended', {
                     realm,
                     waveNumber: state.waveNumber,
                     playersEndangered: state.playersEndangered.size,
-                    playersRescued: state.playersRescued.size
+                    playersRescued: state.playersRescued.size,
+                    cooldown: config.cooldownDuration
                 });
                 console.log(`✨ Darkness receding in ${realm}`);
                 break;

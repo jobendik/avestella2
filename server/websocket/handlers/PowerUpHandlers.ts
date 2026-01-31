@@ -43,8 +43,8 @@ export class PowerUpHandlers {
             if (realmConnections) {
                 for (const conn of realmConnections.values()) {
                     ctx.send(conn.ws, {
-                        type: 'powerup_spawned',
-                        data: powerUp,
+                        type: 'power_up_spawned',
+                        data: { powerUp },
                         timestamp: Date.now()
                     });
                 }
@@ -105,7 +105,7 @@ export class PowerUpHandlers {
 
             // Notify collector
             ctx.send(connection.ws, {
-                type: 'powerup_collected',
+                type: 'power_up_collected',
                 data: {
                     powerUpId,
                     type: powerUp.type,
@@ -121,8 +121,8 @@ export class PowerUpHandlers {
                 for (const conn of realm.values()) {
                     if (conn.playerId !== connection.playerId) {
                         ctx.send(conn.ws, {
-                            type: 'powerup_removed',
-                            data: { powerUpId, collectedBy: connection.playerId },
+                            type: 'power_up_collected',
+                            data: { powerUpId, playerId: connection.playerId },
                             timestamp: now
                         });
                     }
@@ -159,11 +159,13 @@ export class PowerUpHandlers {
                 const realm = ctx.realms.get(connection.realm)!;
                 for (const conn of realm.values()) {
                     ctx.send(conn.ws, {
-                        type: 'powerup_activated',
+                        type: 'power_up_effect_applied',
                         data: {
                             playerId: connection.playerId,
-                            powerUpType,
-                            effect: powerUp.config
+                            effect: {
+                                type: powerUpType,
+                                duration: powerUp.config?.duration || 10000
+                            }
                         },
                         timestamp: Date.now()
                     });
@@ -186,8 +188,8 @@ export class PowerUpHandlers {
                 .filter(p => p.expiresAt > now);
 
             ctx.send(connection.ws, {
-                type: 'powerups_list',
-                data: { powerUps },
+                type: 'power_ups_state',
+                data: { powerUps, activeEffects: [] },
                 timestamp: now
             });
         } catch (error) {
@@ -242,7 +244,7 @@ export class PowerUpHandlers {
                 for (const realm of ctx.realms.values()) {
                     for (const conn of realm.values()) {
                         ctx.send(conn.ws, {
-                            type: 'powerup_expired',
+                            type: 'power_up_expired',
                             data: { powerUpId: id },
                             timestamp: now
                         });

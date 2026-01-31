@@ -23,20 +23,26 @@ export function useDarkness(audio?: UseAudioReturn) {
     // Sync state from server events
     useEffect(() => {
         const handleWarning = (data: any) => {
-            setState(prev => ({ ...prev, phase: 'warning', timeRemaining: data.warningDuration }));
-            endTimeRef.current = Date.now() + data.warningDuration;
+            if (!data) return;
+            const duration = data.warningDuration || 15000;
+            setState(prev => ({ ...prev, phase: 'warning', timeRemaining: duration }));
+            endTimeRef.current = Date.now() + duration;
             if (audio) audio.playDarkness();
         };
 
         const handleActive = (data: any) => {
-            setState(prev => ({ ...prev, phase: 'active', timeRemaining: data.duration }));
-            endTimeRef.current = Date.now() + data.duration;
+            if (!data) return;
+            const duration = data.duration || 30000;
+            setState(prev => ({ ...prev, phase: 'active', timeRemaining: duration }));
+            endTimeRef.current = Date.now() + duration;
             if (audio) audio.playDarknessRumble(1);
         };
 
         const handleEnded = (data: any) => {
-            setState(prev => ({ ...prev, phase: 'cooldown', timeRemaining: data.cooldown }));
-            endTimeRef.current = Date.now() + data.cooldown;
+            if (!data) return;
+            const cooldown = data.cooldown || 60000;
+            setState(prev => ({ ...prev, phase: 'cooldown', timeRemaining: cooldown }));
+            endTimeRef.current = Date.now() + cooldown;
             if (audio) audio.playDarknessRumble(0.2);
         };
 

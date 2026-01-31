@@ -29,6 +29,7 @@ export function usePowerUps(): UsePowerUpsReturn {
         };
 
         const handleSpawn = (data: { powerUp: any }) => {
+            if (!data?.powerUp) return;
             const p = data.powerUp;
             setPowerups(prev => {
                 // Avoid duplicates
@@ -38,14 +39,17 @@ export function usePowerUps(): UsePowerUpsReturn {
         };
 
         const handleCollected = (data: { powerUpId: string, playerId: string }) => {
+            if (!data?.powerUpId) return;
             setPowerups(prev => prev.filter(p => p.id !== data.powerUpId));
         };
 
         const handleExpired = (data: { powerUpId: string }) => {
+            if (!data?.powerUpId) return;
             setPowerups(prev => prev.filter(p => p.id !== data.powerUpId));
         };
 
         const handleState = (data: { powerUps: any[], activeEffects: any[] }) => {
+            if (!data?.powerUps) return;
             // Sync full state
             const newPowerUps = data.powerUps.map((p: any) => new PowerUp(p.id, p.x, p.y, p.type, p.realm, p.life));
             setPowerups(newPowerUps);
@@ -59,6 +63,7 @@ export function usePowerUps(): UsePowerUpsReturn {
         };
 
         const handleEffectApplied = (data: { effect: any }) => {
+            if (!data?.effect) return;
             const { type, duration } = data.effect;
             const expiry = Date.now() + duration;
             activePowerUpsRef.current.set(type, expiry);
@@ -66,6 +71,7 @@ export function usePowerUps(): UsePowerUpsReturn {
         };
 
         const handleEffectEnded = (data: { effectType: string }) => {
+            if (!data?.effectType) return;
             activePowerUpsRef.current.delete(data.effectType as PowerUpType);
             setTick(t => t + 1);
         };

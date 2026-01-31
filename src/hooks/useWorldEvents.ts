@@ -136,6 +136,7 @@ export function useWorldEvents(): UseWorldEventsReturn {
   // Server event listeners
   useEffect(() => {
     const handleEventStarted = (data: { event: any }) => {
+      if (!data?.event) return;
       const newEvent = createEventFromData(data.event);
       if (newEvent) {
         setActiveEvents(prev => {
@@ -148,11 +149,12 @@ export function useWorldEvents(): UseWorldEventsReturn {
     };
 
     const handleEventEnded = (data: { eventId: string }) => {
+      if (!data?.eventId) return;
       setActiveEvents(prev => prev.filter(e => e.id !== data.eventId));
     };
 
     const handleWorldEventsList = (data: { events: any[] }) => {
-      if (!data.events) return;
+      if (!data?.events) return;
       const newEvents = data.events.map(createEventFromData).filter((e): e is ActiveWorldEvent => e !== null);
       setActiveEvents(newEvents);
     };

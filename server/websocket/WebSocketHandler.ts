@@ -244,36 +244,38 @@ export class WebSocketHandler {
     private initializeServices(): void {
         // World Events Service
         worldEventsService.on('event_started', (event: any) => {
-            this.broadcast({ type: 'world_event_started', event });
+            this.broadcast({ type: 'world_event_started', data: { event } });
         });
 
         worldEventsService.on('event_ended', (event: any) => {
-            this.broadcast({ type: 'world_event_ended', eventId: event.id, event });
+            this.broadcast({ type: 'world_event_ended', data: { eventId: event.id, event } });
         });
 
         // Darkness Service
-        darknessService.on('darkness_warning', (data: any) => {
-            this.broadcastToRealm(data.realm, { type: 'darkness_warning', ...data });
+        darknessService.on('darkness_warning', (darknessData: any) => {
+            this.broadcastToRealm(darknessData.realm, { type: 'darkness_warning', data: darknessData });
         });
 
-        darknessService.on('darkness_active', (data: any) => {
-            this.broadcastToRealm(data.realm, { type: 'darkness_active', ...data });
+        darknessService.on('darkness_active', (darknessData: any) => {
+            this.broadcastToRealm(darknessData.realm, { type: 'darkness_active', data: darknessData });
         });
 
-        darknessService.on('darkness_ended', (data: any) => {
-            this.broadcastToRealm(data.realm, { type: 'darkness_ended', ...data });
+        darknessService.on('darkness_ended', (darknessData: any) => {
+            this.broadcastToRealm(darknessData.realm, { type: 'darkness_ended', data: darknessData });
         });
 
         // Power-up Service
         powerUpService.on('power_up_spawned', (powerUp: any) => {
-            this.broadcastToRealm(powerUp.realm, { type: 'power_up_spawned', powerUp });
+            this.broadcastToRealm(powerUp.realm, { type: 'power_up_spawned', data: { powerUp } });
         });
 
-        powerUpService.on('power_up_collected', (data: any) => {
-            this.broadcastToRealm(data.realm, {
+        powerUpService.on('power_up_collected', (collectedData: any) => {
+            this.broadcastToRealm(collectedData.realm, {
                 type: 'power_up_collected',
-                powerUpId: data.powerUpId,
-                playerId: data.playerId
+                data: {
+                    powerUpId: collectedData.powerUpId,
+                    playerId: collectedData.playerId
+                }
             });
         });
 
@@ -281,28 +283,32 @@ export class WebSocketHandler {
         tagGameService.on('session_created', (session: any) => {
             this.broadcast({
                 type: 'tag_session_created',
-                session: {
-                    id: session.id,
-                    realm: session.realm,
-                    maxPlayers: session.maxPlayers,
-                    duration: session.duration,
-                    playerCount: session.players?.size || 0
+                data: {
+                    session: {
+                        id: session.id,
+                        realm: session.realm,
+                        maxPlayers: session.maxPlayers,
+                        duration: session.duration,
+                        playerCount: session.players?.size || 0
+                    }
                 }
             });
         });
 
-        tagGameService.on('game_started', (data: any) => {
-            this.broadcastToTagSession(data.sessionId, {
+        tagGameService.on('game_started', (gameData: any) => {
+            this.broadcastToTagSession(gameData.sessionId, {
                 type: 'tag_game_started',
-                initialTagger: data.initialTagger
+                data: { initialTagger: gameData.initialTagger }
             });
         });
 
-        tagGameService.on('tag_occurred', (data: any) => {
-            this.broadcastToTagSession(data.sessionId, {
+        tagGameService.on('tag_occurred', (tagData: any) => {
+            this.broadcastToTagSession(tagData.sessionId, {
                 type: 'tag_occurred',
-                tagger: data.tagger,
-                tagged: data.tagged
+                data: {
+                    tagger: tagData.tagger,
+                    tagged: tagData.tagged
+                }
             });
         });
     }
