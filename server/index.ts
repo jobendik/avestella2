@@ -262,13 +262,11 @@ app.get('/api/health', (_req, res) => {
 });
 
 // Version endpoint - shows current git commit info
-app.get('/api/version', (_req, res) => {
-    const { execSync } = require('child_process');
+app.get('/api/version', async (_req, res) => {
     try {
-        const commit = execSync('git rev-parse --short HEAD').toString().trim();
-        const message = execSync('git log -1 --format=%s').toString().trim();
-        const date = execSync('git log -1 --format=%ci').toString().trim();
-        res.json({ commit, message, date });
+        const { readFileSync } = await import('fs');
+        const data = readFileSync('/opt/avestella/repo/version.json', 'utf-8');
+        res.json(JSON.parse(data));
     } catch {
         res.json({ commit: 'unknown' });
     }
