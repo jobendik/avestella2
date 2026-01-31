@@ -355,6 +355,10 @@ export function useGameState(): UseGameStateReturn {
       const state = gameState.current;
       const remotePlayers = data.players.filter((p: any) => p.id !== playerId);
       
+      // Debug: Log positions to verify server is sending correct data
+      if (remotePlayers.length > 0 && Math.random() < 0.02) {
+        console.log(`🌐 My pos: (${Math.round(state.playerX)}, ${Math.round(state.playerY)}) | Remote: ${remotePlayers.map((p: any) => `${p.id.substring(0,10)}@(${p.x},${p.y})`).join(', ')}`);
+      
       // Update or add remote players
       for (const playerData of remotePlayers) {
         const existingIndex = state.aiAgents.findIndex(a => a.id === playerData.id);
