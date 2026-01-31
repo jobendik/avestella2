@@ -346,9 +346,48 @@ export function useGameState(): UseGameStateReturn {
     // Connect to Multiplayer Server
     gameClient.connect(playerId, (state.currentRealm || DEFAULT_REALM) as RealmId);
 
-    // Listen for remote updates
+    // Listen for world state updates (contains all remote players)
+    (gameClient as any).on('world_state', (data: any) => {
+      if (!data?.players) return;
+      
+      const state = gameState.current;
+      const remotePlayers = data.players.filter((p: any) => p.id !== playerId);
+      
+      // Update or add remote players
+      for (const playerData of remotePlayers) {
+        const existingIndex = state.aiAgents.findIndex(a => a.id === playerData.id);
+        
+        if (existingIndex >= 0) {
+          // Update existing
+          const agent = state.aiAgents[existingIndex];
+          agent.x = playerData.x;
+          agent.y = playerData.y;
+        } else {
+          // Add new remote player as an "Agent"
+          const hueToColor = (hue: number) => `hsl(${hue}, 70%, 60%)`;
+          const newAgent = new AIAgent(
+            playerData.x, 
+            playerData.y, 
+            hueToColor(playerData.hue || 180), 
+            state.currentRealm || DEFAULT_REALM, 
+            'social'
+          );
+          newAgent.id = playerData.id;
+          newAgent.name = playerData.name || `Player_${playerData.id.substring(0, 6)}`;
+          state.aiAgents.push(newAgent);
+        }
+      }
+      
+      // Remove players that are no longer in the world state
+      const remoteIds = new Set(remotePlayers.map((p: any) => p.id));
+      state.aiAgents = state.aiAgents.filter(
+        agent => !agent.id.startsWith('player_') || remoteIds.has(agent.id)
+      );
+    });
+
+    // Listen for individual player updates (fallback/legacy)
     (gameClient as any).on('player_update', (data: any) => {
-      if (data.id === playerId) return; // Ignore self
+      if (!data || data.id === playerId) return; // Ignore self
 
       const state = gameState.current;
       // Check if agent/player already exists
