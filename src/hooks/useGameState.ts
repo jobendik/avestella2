@@ -266,9 +266,8 @@ export function useGameState(): UseGameStateReturn {
       state.aiAgents.push(new AIAgent(x, y, color, realmId, personality));
     }
 
-    // Spawn initial fragments
+    // Fragments now come from server - initialize empty, will be populated by world_state
     state.fragments = [];
-    spawnFragments(state, 150);
 
     // Clear effects
     state.particles = [];
@@ -358,6 +357,22 @@ export function useGameState(): UseGameStateReturn {
       // Debug: Log positions to verify server is sending correct data
       if (remotePlayers.length > 0 && Math.random() < 0.02) {
         console.log(`🌐 My pos: (${Math.round(state.playerX)}, ${Math.round(state.playerY)}) | Remote: ${remotePlayers.map((p: any) => `${p.id.substring(0,10)}@(${p.x},${p.y})`).join(', ')}`);
+      }
+      
+      // Update fragments from server (server-authoritative)
+      if (data.fragments && Array.isArray(data.fragments)) {
+        state.fragments = data.fragments.map((f: any) => ({
+          id: f.id,
+          x: f.x,
+          y: f.y,
+          isGolden: f.isGolden,
+          value: f.value,
+          phase: f.phase,
+          pulsePhase: f.phase,
+          realmId: state.currentRealm || DEFAULT_REALM,
+          collected: false
+        }));
+      }
       
       // Update or add remote players
       for (const playerData of remotePlayers) {
@@ -393,6 +408,49 @@ export function useGameState(): UseGameStateReturn {
     
     (gameClient as any).on('world_state', handleWorldState);
 
+    // Listen for fragment spawned events (incremental update)
+    const handleFragmentSpawned = (data: any) => {
+      const state = gameState.current;
+      if (data && data.id) {
+        state.fragments.push({
+          id: data.id,
+          x: data.x,
+          y: data.y,
+          isGolden: data.isGolden,
+          value: data.value,
+          phase: data.phase,
+          pulsePhase: data.phase,
+          realmId: state.currentRealm || DEFAULT_REALM,
+          collected: false
+        });
+      }
+    };
+    (gameClient as any).on('fragment_spawned', handleFragmentSpawned);
+
+    // Listen for fragment removed events (when another player collects)
+    const handleFragmentRemoved = (data: any) => {
+      const state = gameState.current;
+      if (data && data.fragmentId) {
+        state.fragments = state.fragments.filter(f => f.id !== data.fragmentId);
+      }
+    };
+    (gameClient as any).on('fragment_removed', handleFragmentRemoved);
+
+    // Listen for fragment collected confirmation (when we collect)
+    const handleFragmentCollected = (data: any) => {
+      const state = gameState.current;
+      if (data && data.fragmentId) {
+        // Remove fragment from local state
+        state.fragments = state.fragments.filter(f => f.id !== data.fragmentId);
+        // Update stats
+        state.fragmentsCollected += data.value || 1;
+        if (data.isGolden) {
+          state.goldenFragmentsCollected += 1;
+        }
+      }
+    };
+    (gameClient as any).on('fragment_collected', handleFragmentCollected);
+
     // Listen for individual player updates (fallback/legacy)
     const handlePlayerUpdate = (data: any) => {
       if (!data || data.id === playerId) return; // Ignore self
@@ -422,32 +480,16 @@ export function useGameState(): UseGameStateReturn {
     // Cleanup on unmount
     return () => {
       (gameClient as any).off('world_state', handleWorldState);
+      (gameClient as any).off('fragment_spawned', handleFragmentSpawned);
+      (gameClient as any).off('fragment_removed', handleFragmentRemoved);
+      (gameClient as any).off('fragment_collected', handleFragmentCollected);
       (gameClient as any).off('player_update', handlePlayerUpdate);
     };
 
   }, [playerId]);
 
-  /**
-   * Spawn fragments in the world
-   */
-  const spawnFragments = (state: GameStateRef, count: number) => {
-    for (let i = 0; i < count; i++) {
-      // 70% of fragments in genesis (default realm), 30% in other realms
-      const realmId = Math.random() < 0.7 ? DEFAULT_REALM : randomElement(ALL_REALM_IDS);
-      const isGolden = Math.random() < 0.1;
-      state.fragments.push({
-        id: `fragment_${Date.now()}_${i}`,
-        realmId,
-        x: randomRange(50, WORLD_SIZE - 50),
-        y: randomRange(50, WORLD_SIZE - 50),
-        collected: false,
-        value: isGolden ? 5 : 1,
-        phase: 0,
-        pulsePhase: Math.random() * Math.PI * 2,
-        isGolden,
-      });
-    }
-  };
+  // Note: spawnFragments has been removed - fragments are now server-authoritative
+  // The server initializes fragments per realm and broadcasts them via world_state
 
   /**
    * Update player name and persist to storage
@@ -545,17 +587,23 @@ export function useGameState(): UseGameStateReturn {
   }, []);
 
   /**
-   * Add a new fragment to spawn
+   * Add a new fragment - now handled server-side, this is a no-op
+   * @deprecated Fragments are now server-authoritative
    */
   const addFragment = useCallback(() => {
-    spawnFragments(gameState.current, 1);
+    // No-op: fragments are now spawned by the server
   }, []);
 
   /**
-   * Collect a fragment (increment counter)
+   * Collect a fragment - sends request to server for validation
+   * The server will respond with fragment_collected if successful
    */
-  const collectFragment = useCallback(() => {
-    gameState.current.fragmentsCollected++;
+  const collectFragment = useCallback((fragmentId?: string) => {
+    if (fragmentId) {
+      // Send collect request to server
+      gameClient.collectFragment(fragmentId);
+    }
+    // Note: fragmentsCollected is now updated when server confirms via fragment_collected event
   }, []);
 
   /**

@@ -132,6 +132,7 @@ export interface HandlerContext {
     powerUps: Map<string, PowerUpInstance>;
     worldEvents: Map<string, WorldEvent>;
     litStars: Set<string>;
+    fragments: Map<string, ServerFragment>;
 
     // Helper methods
     send: (ws: WebSocket, message: any) => void;
@@ -148,10 +149,25 @@ export interface MessageHandler {
 }
 
 /**
+ * Server-authoritative fragment
+ */
+export interface ServerFragment {
+    id: string;
+    x: number;
+    y: number;
+    realm: string;
+    isGolden: boolean;
+    value: number;
+    phase: number;
+    spawnedAt: number;
+}
+
+/**
  * Realm state snapshot
  */
 export interface RealmState {
     echoes: Map<string, Echo>;
     powerUps: Map<string, PowerUpInstance>;
     activeEvents: WorldEvent[];
+    fragments: Map<string, ServerFragment>;
 }

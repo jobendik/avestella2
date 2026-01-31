@@ -136,6 +136,17 @@ class GameClient extends EventEmitter {
         });
     }
 
+    /**
+     * Request to collect a fragment (server validates and confirms)
+     */
+    public collectFragment(fragmentId: string) {
+        this.send('collect_fragment', {
+            fragmentId,
+            playerId: this.playerId,
+            realm: this.realm
+        });
+    }
+
     public sendAction(type: 'sing' | 'pulse' | 'emote', data: any) {
         this.send(type, {
             ...data,

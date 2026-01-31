@@ -30,6 +30,7 @@ import constellations from '@/rendering/constellations';
 import { DEFAULT_REALM } from '@/constants/realms';
 import { renderRealmBackground, type BackgroundOptions } from '@/rendering/nebulaBackground';
 import { HoverTooltip, type HoveredPlayer } from '@/components/ui/HoverTooltip';
+import { gameClient } from '@/services/GameClient';
 
 // Constants for warmth system
 const COLD_ONSET_DELAY = 180; // frames before cold starts
@@ -775,7 +776,7 @@ export function GameCanvas(): JSX.Element {
       }
     }
 
-    // Check fragment collection
+    // Check fragment collection (now server-authoritative)
     // Get active world event modifiers for bonus rewards
     const eventModifiers = currentWorldEvents.getActiveEventModifiers();
 
@@ -790,8 +791,16 @@ export function GameCanvas(): JSX.Element {
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       if (dist < 40) {
+        // Send collection request to server (server validates and confirms)
+        if (fragment.id) {
+          gameClient.collectFragment(fragment.id);
+        }
+        
+        // Mark as collected locally for immediate visual feedback
+        // (Server will send fragment_collected/fragment_removed to confirm)
         fragment.collected = true;
-        // Apply world event fragment multiplier
+        
+        // Apply world event fragment multiplier for visual feedback
         const baseValue = fragment.value || 1;
         const value = Math.round(baseValue * eventModifiers.fragmentMultiplier);
 
@@ -826,8 +835,10 @@ export function GameCanvas(): JSX.Element {
         const shareMultiplier = isSharedAura ? 1 + (sharedCount - 1) * 0.5 : 1;
         const sharedValue = Math.round(value * shareMultiplier);
 
-        state.fragmentsCollected += sharedValue;
-        currentProgression.addStardust(sharedValue);
+        // Note: Stats are now updated by server via fragment_collected event in useGameState
+        // Local update removed - server is authoritative
+        // state.fragmentsCollected += sharedValue;  // Now handled by server
+        currentProgression.addStardust(sharedValue);  // Keep local XP effect for immediate feedback
 
         // Visual feedback for shared aura collection
         if (isSharedAura) {
@@ -1008,9 +1019,9 @@ export function GameCanvas(): JSX.Element {
           }
         }
 
-        // Remove and spawn new one
+        // Remove fragment locally (server will also send fragment_removed to other players)
+        // Note: Fragment spawning is now server-side, no need to call addFragment()
         state.fragments.splice(i, 1);
-        gameState.addFragment();
       }
     }
 

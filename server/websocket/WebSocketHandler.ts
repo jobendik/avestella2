@@ -38,7 +38,7 @@ import { friendshipService } from '../services/FriendshipService.js';
 import { SHARED_CONFIG, getLevel } from '../common/constants.js';
 
 // Types
-import type { PlayerConnection, WebSocketMessage, HandlerContext, Echo, PowerUpInstance, WorldEvent } from './types.js';
+import type { PlayerConnection, WebSocketMessage, HandlerContext, Echo, PowerUpInstance, WorldEvent, ServerFragment } from './types.js';
 
 // Bot
 import { ServerBot } from './ServerBot.js';
@@ -112,6 +112,18 @@ export class WebSocketHandler {
     private powerUps: Map<string, PowerUpInstance> = new Map();
     private worldEvents: Map<string, WorldEvent> = new Map();
     private realms: Map<string, Map<string, PlayerConnection>> = new Map();
+
+    // Server-authoritative fragments (per realm)
+    private fragments: Map<string, Map<string, ServerFragment>> = new Map();
+    private readonly WORLD_SIZE = 8000;
+    private readonly INITIAL_FRAGMENTS_PER_REALM = 150;
+    private readonly MAX_FRAGMENTS_PER_REALM = 200;
+    private readonly FRAGMENT_COLLECT_RADIUS = 60;
+    private readonly FRAGMENT_SPAWN_INTERVAL = 5000; // 5 seconds
+    private readonly XP_FRAGMENT_COLLECT = 1;
+    private readonly XP_GOLDEN_FRAGMENT_COLLECT = 5;
+    private fragmentIdCounter = 0;
+    private lastFragmentSpawn: Map<string, number> = new Map();
 
     // Timing constants
     private readonly PLAYER_TIMEOUT = 30000;
@@ -216,7 +228,90 @@ export class WebSocketHandler {
         const realmNames = ['genesis', 'nebula', 'void', 'starforge', 'sanctuary'];
         for (const realm of realmNames) {
             this.realms.set(realm, new Map());
+            // Initialize fragments for this realm with seeded random
+            this.initializeFragmentsForRealm(realm);
+            this.lastFragmentSpawn.set(realm, Date.now());
         }
+        console.log(`✨ Initialized ${realmNames.length} realms with ${this.INITIAL_FRAGMENTS_PER_REALM} fragments each`);
+    }
+
+    /**
+     * Seeded random number generator for consistent fragment placement
+     * Using simple mulberry32 algorithm
+     */
+    private seededRandom(seed: number): () => number {
+        return () => {
+            let t = seed += 0x6D2B79F5;
+            t = Math.imul(t ^ t >>> 15, t | 1);
+            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+    }
+
+    /**
+     * Initialize fragments for a realm using seeded random
+     */
+    private initializeFragmentsForRealm(realm: string): void {
+        const realmFragments = new Map<string, ServerFragment>();
+        // Use realm name as seed for consistent fragment placement across restarts
+        const seed = realm.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) * 12345;
+        const random = this.seededRandom(seed);
+
+        for (let i = 0; i < this.INITIAL_FRAGMENTS_PER_REALM; i++) {
+            const id = `frag_${realm}_${i}`;
+            const isGolden = random() < 0.1; // 10% golden
+            const fragment: ServerFragment = {
+                id,
+                x: 50 + random() * (this.WORLD_SIZE - 100),
+                y: 50 + random() * (this.WORLD_SIZE - 100),
+                realm,
+                isGolden,
+                value: isGolden ? 5 : 1,
+                phase: random() * Math.PI * 2,
+                spawnedAt: Date.now()
+            };
+            realmFragments.set(id, fragment);
+        }
+        this.fragments.set(realm, realmFragments);
+    }
+
+    /**
+     * Spawn a new fragment in a realm
+     */
+    private spawnFragment(realm: string): ServerFragment | null {
+        const realmFragments = this.fragments.get(realm);
+        if (!realmFragments || realmFragments.size >= this.MAX_FRAGMENTS_PER_REALM) {
+            return null;
+        }
+
+        this.fragmentIdCounter++;
+        const id = `frag_${realm}_${Date.now()}_${this.fragmentIdCounter}`;
+        const isGolden = Math.random() < 0.1;
+        const fragment: ServerFragment = {
+            id,
+            x: 50 + Math.random() * (this.WORLD_SIZE - 100),
+            y: 50 + Math.random() * (this.WORLD_SIZE - 100),
+            realm,
+            isGolden,
+            value: isGolden ? 5 : 1,
+            phase: Math.random() * Math.PI * 2,
+            spawnedAt: Date.now()
+        };
+        realmFragments.set(id, fragment);
+        return fragment;
+    }
+
+    /**
+     * Get all fragments as a flat map (for handler context)
+     */
+    private getAllFragmentsFlat(): Map<string, ServerFragment> {
+        const allFragments = new Map<string, ServerFragment>();
+        for (const realmFragments of this.fragments.values()) {
+            for (const [id, fragment] of realmFragments) {
+                allFragments.set(id, fragment);
+            }
+        }
+        return allFragments;
     }
 
     /**
@@ -231,6 +326,7 @@ export class WebSocketHandler {
             powerUps: this.powerUps,
             worldEvents: this.worldEvents,
             litStars: this.litStars,
+            fragments: this.getAllFragmentsFlat(),
             send: this.send.bind(this),
             broadcast: this.broadcast.bind(this),
             broadcastToRealm: this.broadcastToRealm.bind(this),
@@ -453,6 +549,9 @@ export class WebSocketHandler {
                 // === CORE GAME ACTIONS ===
                 case 'player_update':
                     this.handlePlayerUpdate(playerId, connection, validatedData);
+                    break;
+                case 'collect_fragment':
+                    this.handleCollectFragment(connection, validatedData);
                     break;
                 case 'ping':
                     this.send(connection.ws, { type: 'pong', data: { timestamp: message.timestamp }, timestamp: Date.now() });
@@ -1338,6 +1437,63 @@ export class WebSocketHandler {
     }
 
     /**
+     * Handle fragment collection request from client
+     */
+    private handleCollectFragment(connection: PlayerConnection, data: any): void {
+        const { fragmentId } = data;
+        if (!fragmentId || typeof fragmentId !== 'string') {
+            return;
+        }
+
+        const realm = connection.realm;
+        const realmFragments = this.fragments.get(realm);
+        if (!realmFragments) return;
+
+        const fragment = realmFragments.get(fragmentId);
+        if (!fragment) {
+            // Fragment doesn't exist or already collected
+            return;
+        }
+
+        // Validate distance - player must be within collect radius
+        const dx = connection.x - fragment.x;
+        const dy = connection.y - fragment.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > this.FRAGMENT_COLLECT_RADIUS * 1.5) {
+            // Too far - possible cheat attempt, ignore
+            return;
+        }
+
+        // Remove fragment from realm
+        realmFragments.delete(fragmentId);
+
+        // Award XP to player
+        const xpReward = fragment.isGolden ? this.XP_GOLDEN_FRAGMENT_COLLECT : this.XP_FRAGMENT_COLLECT;
+        connection.xp += xpReward;
+
+        // Notify the collecting player
+        this.send(connection.ws, {
+            type: 'fragment_collected',
+            data: {
+                fragmentId,
+                value: fragment.value,
+                isGolden: fragment.isGolden,
+                xpGained: xpReward,
+                totalXp: connection.xp
+            },
+            timestamp: Date.now()
+        });
+
+        // Broadcast to realm that fragment was collected (so others remove it)
+        this.broadcastToRealm(realm, {
+            type: 'fragment_removed',
+            data: { fragmentId },
+            timestamp: Date.now()
+        }, connection.playerId);
+    }
+
+    /**
      * Server game tick - runs at 20Hz
      */
     private serverGameTick(): void {
@@ -1361,6 +1517,32 @@ export class WebSocketHandler {
 
         // Clean up expired power-ups
         PowerUpHandlers.cleanupExpiredPowerUps(this.handlerContext);
+
+        // Spawn fragments periodically in realms with players
+        for (const [realmName, realmConnections] of this.realms) {
+            if (realmConnections.size > 0) {
+                const lastSpawn = this.lastFragmentSpawn.get(realmName) || 0;
+                if (now - lastSpawn > this.FRAGMENT_SPAWN_INTERVAL) {
+                    const newFragment = this.spawnFragment(realmName);
+                    if (newFragment) {
+                        // Broadcast new fragment to realm
+                        this.broadcastToRealm(realmName, {
+                            type: 'fragment_spawned',
+                            data: {
+                                id: newFragment.id,
+                                x: Math.round(newFragment.x),
+                                y: Math.round(newFragment.y),
+                                isGolden: newFragment.isGolden,
+                                value: newFragment.value,
+                                phase: newFragment.phase
+                            },
+                            timestamp: now
+                        });
+                    }
+                    this.lastFragmentSpawn.set(realmName, now);
+                }
+            }
+        }
 
         // Detect constellations every 2 seconds (tick counter)
         if (now % 2000 < this.GAME_TICK_RATE) {
@@ -1513,12 +1695,26 @@ export class WebSocketHandler {
         const echoes = Array.from(this.echoes.values())
             .filter(e => e.expiresAt > Date.now());
 
+        // Gather fragments for this realm
+        const realmFragments = this.fragments.get(realm);
+        const fragmentsArray = realmFragments 
+            ? Array.from(realmFragments.values()).map(f => ({
+                id: f.id,
+                x: Math.round(f.x),
+                y: Math.round(f.y),
+                isGolden: f.isGolden,
+                value: f.value,
+                phase: f.phase
+            }))
+            : [];
+
         const worldState = {
             type: 'world_state',
             data: {
                 players,
                 bots,
                 echoes,
+                fragments: fragmentsArray,
                 litStars: Array.from(this.litStars),
                 serverTime: Date.now()
             },
