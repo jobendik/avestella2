@@ -1430,6 +1430,9 @@ export class WebSocketHandler {
      * Handle player position/state update
      */
     private handlePlayerUpdate(playerId: string, connection: PlayerConnection, data: any): void {
+        const oldX = connection.x;
+        const oldY = connection.y;
+        
         // Bounds check and clamp coordinates
         if (typeof data.x === 'number') {
             connection.x = Math.max(-this.MAX_COORDINATE, Math.min(this.MAX_COORDINATE, data.x));
@@ -1438,9 +1441,10 @@ export class WebSocketHandler {
             connection.y = Math.max(-this.MAX_COORDINATE, Math.min(this.MAX_COORDINATE, data.y));
         }
 
-        // Debug log position updates occasionally
-        if (Math.random() < 0.01) {
-            console.log(`📍 Player ${playerId.substring(0, 15)} position: (${Math.round(connection.x)}, ${Math.round(connection.y)})`);
+        // Debug log position updates (log every 5 seconds per player if they moved)
+        const moved = Math.abs(connection.x - oldX) > 1 || Math.abs(connection.y - oldY) > 1;
+        if (moved && Math.random() < 0.05) {
+            console.log(`📍 Player ${playerId.substring(0, 20)} moved to (${Math.round(connection.x)}, ${Math.round(connection.y)})`);
         }
 
         // Validate and sanitize player name
