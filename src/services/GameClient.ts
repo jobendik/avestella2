@@ -1,6 +1,6 @@
 import { EventEmitter } from './EventEmitter';
 
-export type RealmId = 'genesis' | 'nebula' | 'void' | 'starforge' | 'sanctuary';
+export type RealmId = 'genesis' | 'nebula' | 'void' | 'starforge' | 'sanctuary' | 'abyss' | 'crystal' | 'celestial' | 'tagarena';
 
 interface WebSocketMessage {
     type: string;
@@ -27,7 +27,7 @@ class GameClient extends EventEmitter {
     private playerId: string = '';
     private realm: RealmId = 'genesis';
     private url: string = 'ws://localhost:3001/ws'; // Default to local dev
-    
+
     // Network stats tracking
     private _latency: number = 0;
     private _nearbyPlayerCount: number = 0;
@@ -884,7 +884,7 @@ class GameClient extends EventEmitter {
                 this.emit('latency_update', { latency: this._latency });
             }
         }
-        
+
         // Handle world_state for nearby player count
         if (msg.type === 'world_state' && msg.data?.players) {
             // Count other players (excluding self)
@@ -893,7 +893,7 @@ class GameClient extends EventEmitter {
             ).length;
             this.emit('nearby_count_update', { count: this._nearbyPlayerCount });
         }
-        
+
         this.emit(msg.type, msg.data);
     }
 

@@ -230,7 +230,17 @@ export class WebSocketHandler {
      * Initialize realm structures
      */
     private initializeRealms(): void {
-        const realmNames = ['genesis', 'nebula', 'void', 'starforge', 'sanctuary'];
+        const realmNames = [
+            'genesis',
+            'nebula',
+            'void',
+            'starforge',
+            'sanctuary',
+            'abyss',
+            'crystal',
+            'celestial',
+            'tagarena'
+        ];
         for (const realm of realmNames) {
             this.realms.set(realm, new Map());
             // Initialize fragments for this realm with seeded random
@@ -471,7 +481,7 @@ export class WebSocketHandler {
 
         // Initialize at world center (WORLD_SIZE = 8000, so center is 4000)
         const WORLD_CENTER = 4000;
-        
+
         const connection: PlayerConnection = {
             ws,
             playerId,
@@ -1427,10 +1437,10 @@ export class WebSocketHandler {
         if (typeof data.y === 'number') {
             connection.y = Math.max(-this.MAX_COORDINATE, Math.min(this.MAX_COORDINATE, data.y));
         }
-        
+
         // Debug log position updates occasionally
         if (Math.random() < 0.01) {
-            console.log(`📍 Player ${playerId.substring(0,15)} position: (${Math.round(connection.x)}, ${Math.round(connection.y)})`);
+            console.log(`📍 Player ${playerId.substring(0, 15)} position: (${Math.round(connection.x)}, ${Math.round(connection.y)})`);
         }
 
         // Validate and sanitize player name
@@ -1724,10 +1734,10 @@ export class WebSocketHandler {
                 isBot: conn.isBot
             });
         }
-        
+
         // Debug log if multiple players
         if (players.length > 1 && Math.random() < 0.02) {
-            console.log(`🌐 Broadcasting to ${realm}: ${players.length} players`, players.map(p => `${p.id.substring(0,12)}@(${p.x},${p.y})`));
+            console.log(`🌐 Broadcasting to ${realm}: ${players.length} players`, players.map(p => `${p.id.substring(0, 12)}@(${p.x},${p.y})`));
         }
 
         // Gather bot states in this realm
@@ -1744,7 +1754,7 @@ export class WebSocketHandler {
 
         // Gather fragments for this realm
         const realmFragments = this.fragments.get(realm);
-        const fragmentsArray = realmFragments 
+        const fragmentsArray = realmFragments
             ? Array.from(realmFragments.values()).map(f => ({
                 id: f.id,
                 x: Math.round(f.x),

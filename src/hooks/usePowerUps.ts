@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { PowerUp, spawnPowerUp, updatePowerUps, checkPowerUpCollection, PowerUpType } from '@/classes/PowerUp';
+import { PowerUp, updatePowerUps, checkPowerUpCollection, PowerUpType } from '@/classes/PowerUp';
 import { useGameStateContext } from '@/contexts/GameContext';
 import { useAudioContext } from '@/contexts/GameContext';
 import { gameClient } from '@/services/GameClient';

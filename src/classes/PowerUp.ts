@@ -171,46 +171,6 @@ export class PowerUp {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Spawn a new power-up at a random location near a position
- */
-export function spawnPowerUp(
-  playerX: number,
-  playerY: number,
-  realm: string,
-  powerups: PowerUp[]
-): PowerUp | null {
-  if (powerups.length >= MAX_POWERUPS) return null;
-  if (Math.random() > POWERUP_SPAWN_CHANCE) return null;
-
-  // Spawn within campfire radius, near but not too close to player
-  const angle = Math.random() * Math.PI * 2;
-  const distance = 200 + Math.random() * 600; // 200-800 units away
-  let x = playerX + Math.cos(angle) * distance;
-  let y = playerY + Math.sin(angle) * distance;
-
-  // Clamp to campfire area
-  const distFromCenter = Math.hypot(x - CAMPFIRE_CENTER.x, y - CAMPFIRE_CENTER.y);
-  if (distFromCenter > CAMPFIRE_RADIUS) {
-    const scale = CAMPFIRE_RADIUS / distFromCenter;
-    x = CAMPFIRE_CENTER.x + (x - CAMPFIRE_CENTER.x) * scale * 0.9;
-    y = CAMPFIRE_CENTER.y + (y - CAMPFIRE_CENTER.y) * scale * 0.9;
-  }
-
-  // Random power-up type with weighted chances
-  const roll = Math.random();
-  let type: PowerUpType;
-  if (roll < 0.5) type = 'speed';        // 50% speed boost
-  else if (roll < 0.75) type = 'xp';     // 25% XP boost
-  else if (roll < 0.9) type = 'shield';  // 15% shield
-  else type = 'magnet';                   // 10% magnet
-
-  const id = `pu_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-  const powerup = new PowerUp(id, x, y, type, realm, POWERUP_LIFETIME);
-  
-  return powerup;
-}
-
-/**
  * Update all power-ups (animation and lifetime)
  */
 export function updatePowerUps(powerups: PowerUp[], deltaTime: number): PowerUp[] {
@@ -241,11 +201,4 @@ export function checkPowerUpCollection(
     }
   }
   return null;
-}
-
-/**
- * Generate a unique power-up ID
- */
-export function generatePowerUpId(): string {
-  return `pu_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
 }

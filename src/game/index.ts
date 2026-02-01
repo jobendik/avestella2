@@ -4,13 +4,7 @@
 
 // Fragments
 export {
-  FragmentManager,
-  spawnFragment,
-  shouldSpawnFragment,
   collectFragments,
-  cullDistantFragments,
-  initializeFragments,
-  pruneFragments,
   FRAGMENT_COLLECT_RADIUS,
   FRAGMENT_SPAWN_RATE,
   type CollectionResult,

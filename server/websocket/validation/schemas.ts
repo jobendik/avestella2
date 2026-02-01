@@ -31,6 +31,7 @@ export const playerUpdateSchema = z.object({
     y: coordinate,
     dx: z.number().min(-10).max(10).optional(),
     dy: z.number().min(-10).max(10).optional(),
+    hue: z.number().min(0).max(360).optional(),
     realm: realm.optional(),
     speaking: z.boolean().optional()
 });
@@ -922,9 +923,8 @@ export const noDataRequiredMessages = new Set([
  * Validate incoming WebSocket message data
  * @returns { success: true, data: validated } or { success: false, error: message }
  */
-export function validateMessage(type: string, data: unknown): 
-    { success: true; data: unknown } | { success: false; error: string } {
-    
+export function validateMessage(type: string, data: unknown): { success: true; data: unknown } | { success: false; error: string } {
+
     // Skip validation for messages that don't require data
     if (noDataRequiredMessages.has(type)) {
         return { success: true, data: data || {} };
@@ -932,7 +932,7 @@ export function validateMessage(type: string, data: unknown):
 
     // Get schema for this message type
     const schema = messageSchemas[type];
-    
+
     // If no schema, allow but log warning (unknown message types)
     if (!schema) {
         console.warn(`[Validation] No schema for message type: ${type}`);
@@ -941,9 +941,9 @@ export function validateMessage(type: string, data: unknown):
 
     // Validate with schema
     const result = schema.safeParse(data);
-    
+
     if (!result.success) {
-        const errors = result.error.errors.map(e => 
+        const errors = result.error.errors.map(e =>
             `${e.path.join('.')}: ${e.message}`
         ).join(', ');
         return { success: false, error: `Validation failed: ${errors}` };

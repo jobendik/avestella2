@@ -456,6 +456,16 @@ export function GameCanvas(): JSX.Element {
     state.playerX = clamp(state.playerX, 50, WORLD_SIZE - 50);
     state.playerY = clamp(state.playerY, 50, WORLD_SIZE - 50);
 
+    // Send position update to server (throttled to ~12Hz for network efficiency)
+    if (Math.random() < 0.2) {
+      gameClient.sendPlayerUpdate({
+        x: state.playerX,
+        y: state.playerY,
+        hue: 0,
+        realm: (state as any).currentRealm || 'genesis'
+      });
+    }
+
     // Update camera (Lerp to player)
     // Center player on screen
     state.cameraTargetX = state.playerX - canvas.width / 2;
@@ -795,11 +805,11 @@ export function GameCanvas(): JSX.Element {
         if (fragment.id) {
           gameClient.collectFragment(fragment.id);
         }
-        
+
         // Mark as collected locally for immediate visual feedback
         // (Server will send fragment_collected/fragment_removed to confirm)
         fragment.collected = true;
-        
+
         // Apply world event fragment multiplier for visual feedback
         const baseValue = fragment.value || 1;
         const value = Math.round(baseValue * eventModifiers.fragmentMultiplier);

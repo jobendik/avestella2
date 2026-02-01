@@ -16,7 +16,7 @@
 
 import { EventEmitter } from 'events';
 
-export type PowerUpType = 
+export type PowerUpType =
     | 'speed_boost'
     | 'shield'
     | 'xp_multiplier'
@@ -206,6 +206,34 @@ const REALM_SPAWN_CONFIGS: Record<string, RealmSpawnConfig> = {
         spawnChance: 0.6,
         lifetimeSeconds: 90,
         spawnRadius: 1800
+    },
+    abyss: {
+        maxPowerUps: 4,
+        spawnInterval: 40,
+        spawnChance: 0.3,
+        lifetimeSeconds: 30,
+        spawnRadius: 1600
+    },
+    crystal: {
+        maxPowerUps: 6,
+        spawnInterval: 25,
+        spawnChance: 0.5,
+        lifetimeSeconds: 60,
+        spawnRadius: 1500
+    },
+    celestial: {
+        maxPowerUps: 5,
+        spawnInterval: 30,
+        spawnChance: 0.4,
+        lifetimeSeconds: 75,
+        spawnRadius: 2000
+    },
+    tagarena: {
+        maxPowerUps: 12,
+        spawnInterval: 10,
+        spawnChance: 0.8,
+        lifetimeSeconds: 20,
+        spawnRadius: 1200
     }
 };
 
@@ -380,7 +408,7 @@ export class PowerUpService extends EventEmitter {
      */
     collectPowerUp(powerUpId: string, playerId: string): { success: boolean; effect?: ActiveEffect; config?: PowerUpConfig } {
         const powerUp = this.powerUps.get(powerUpId);
-        
+
         if (!powerUp || powerUp.collected) {
             return { success: false };
         }

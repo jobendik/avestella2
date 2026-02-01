@@ -17,39 +17,6 @@ import { gameClient, type RealmId } from '@/services/GameClient';
 
 // Note: PERSONALITY_TYPES removed - AI agents are now server-authoritative
 
-export interface UseGameStateReturn {
-  gameState: React.RefObject<GameStateRef>;
-  initializeGame: () => void;
-  updatePlayerPosition: (x: number, y: number) => void;
-  updatePlayerName: (name: string) => void;
-  addFragment: () => void;
-  collectFragment: () => void;
-  lightBeacon: (beaconId: string) => void;
-  formBond: (target: IAIAgent) => IBond | null;
-  addParticles: (particles: IParticle[]) => void;
-  addRipple: (x: number, y: number, options?: { maxRadius?: number; color?: string }) => void;
-  addShockwave: (x: number, y: number, options?: { maxRadius?: number; color?: string }) => void;
-  getPlayerPosition: () => { x: number; y: number };
-  getNearbyAgents: (radius: number) => IAIAgent[];
-  getNearbyBeacon: (radius: number) => Beacon | null;
-  saveGameState: () => void;
-  loadGameState: () => void;
-  selectedEntity: IAIAgent | null;
-  setSelectedEntity: (entity: IAIAgent | null) => void;
-  broadcastGesture: (type: 'pulse' | 'spin' | 'signal', x: number, y: number) => void;
-  broadcastMessage: (text: string, x: number, y: number, radius?: number) => void;
-  // Light gifting and bridge creation
-  giftLight: (targetId: string, amount: number) => boolean;
-  createLightBridge: (targetX: number, targetY: number, color: string) => void;
-  sealBond: (bondId: string) => boolean;
-  // Screen effects
-  triggerScreenFlash: (color: string, intensity?: number, decay?: number) => void;
-  // Floating text system
-  addFloatingText: (text: string, x: number, y: number, options?: { hue?: number; size?: number; duration?: number }) => void;
-  // Voice
-  isTalking: boolean;
-  setIsTalking: (talking: boolean) => void;
-}
 
 import { useVoice } from './useVoice';
 
@@ -293,20 +260,20 @@ export function useGameState(): UseGameStateReturn {
       if (!data?.players) {
         return;
       }
-      
+
       const state = gameState.current;
       const remotePlayers = data.players.filter((p: any) => p.id !== playerId);
       const serverBots = data.bots || [];
-      
+
       // Debug: Log positions to verify server is sending correct data
       if ((remotePlayers.length > 0 || serverBots.length > 0) && Math.random() < 0.02) {
         console.log(`🌐 My pos: (${Math.round(state.playerX)}, ${Math.round(state.playerY)}) | Players: ${remotePlayers.length} | Bots: ${serverBots.length}`);
       }
-      
+
       // ═══════════════════════════════════════════════════════════════════════
       // SERVER-AUTHORITATIVE: Update ALL entities from server
       // ═══════════════════════════════════════════════════════════════════════
-      
+
       // Update fragments from server
       if (data.fragments && Array.isArray(data.fragments)) {
         state.fragments = data.fragments.map((f: any) => ({
@@ -321,17 +288,17 @@ export function useGameState(): UseGameStateReturn {
           collected: false
         }));
       }
-      
+
       // Update nebulae from server (cosmetic, consistent for all players)
       if (data.nebulae && Array.isArray(data.nebulae)) {
         state.nebulae = data.nebulae;
       }
-      
+
       // Update stars from server (cosmetic, consistent for all players)
       if (data.stars && Array.isArray(data.stars)) {
         state.stars = data.stars;
       }
-      
+
       // Update echoes from server
       if (data.echoes && Array.isArray(data.echoes)) {
         state.echoes = data.echoes.map((e: any) => ({
@@ -347,19 +314,19 @@ export function useGameState(): UseGameStateReturn {
           pulse: 0
         }));
       }
-      
+
       // Build combined list of aiAgents from: server bots + remote players
       // This replaces ALL local agent generation
       const hueToColor = (hue: number) => `hsl(${hue}, 70%, 60%)`;
-      
+
       // Create lookup of current agents by ID for efficient updates
       const currentAgentsById = new Map<string, any>();
       for (const agent of state.aiAgents) {
         currentAgentsById.set(agent.id, agent);
       }
-      
+
       const newAgentsList: any[] = [];
-      
+
       // Process server bots (server-authoritative AI characters)
       for (const botData of serverBots) {
         const existing = currentAgentsById.get(botData.id);
@@ -387,7 +354,7 @@ export function useGameState(): UseGameStateReturn {
           newAgentsList.push(newAgent);
         }
       }
-      
+
       // Process remote players
       for (const playerData of remotePlayers) {
         const existing = currentAgentsById.get(playerData.id);
@@ -411,11 +378,11 @@ export function useGameState(): UseGameStateReturn {
           newAgentsList.push(newAgent);
         }
       }
-      
+
       // Replace entire aiAgents list with server-authoritative list
       state.aiAgents = newAgentsList;
     };
-    
+
     (gameClient as any).on('world_state', handleWorldState);
 
     // Listen for fragment spawned events (incremental update)
@@ -467,9 +434,9 @@ export function useGameState(): UseGameStateReturn {
       // No-op: world_state handler is authoritative for all entities
       // This is kept for potential direct player updates from server
     };
-    
+
     (gameClient as any).on('player_update', handlePlayerUpdate);
-    
+
     // Cleanup on unmount
     return () => {
       (gameClient as any).off('world_state', handleWorldState);
