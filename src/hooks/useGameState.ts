@@ -8,14 +8,14 @@ import { Bond } from '@/classes/Bond';
 import { Particle } from '@/classes/Particle';
 import { AIAgent } from '@/classes/AIAgent';
 import { Ripple, Shockwave } from '@/classes/Effects';
-import { WORLD_SIZE, BEACONS, AI_AGENT_COUNT, getRandomName } from '@/constants/game';
-import { LIGHT_COLORS } from '@/constants/cosmetics';
-import { randomRange, randomElement } from '@/utils/math';
+import { WORLD_SIZE, BEACONS, getRandomName } from '@/constants/game';
+// Note: LIGHT_COLORS, randomRange, randomElement no longer needed for entity generation
+// Entities are now server-authoritative
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '@/utils/storage';
 import { ALL_REALM_IDS, DEFAULT_REALM } from '@/constants/realms';
 import { gameClient, type RealmId } from '@/services/GameClient';
 
-const PERSONALITY_TYPES = ['curious', 'shy', 'social', 'explorer', 'helper', 'beacon_keeper'] as const;
+// Note: PERSONALITY_TYPES removed - AI agents are now server-authoritative
 
 export interface UseGameStateReturn {
   gameState: React.RefObject<GameStateRef>;
@@ -240,101 +240,44 @@ export function useGameState(): UseGameStateReturn {
     state.playerVX = 0;
     state.playerVY = 0;
 
-    // Initialize beacons from constants
+    // Initialize beacons from constants (beacons are still defined client-side for now)
     state.beacons = BEACONS.map((beacon, index) => ({
       ...beacon,
       realmId: ALL_REALM_IDS[index % ALL_REALM_IDS.length], // Distribute beacons across realms
       active: false, // Start inactive until charged
       lit: false,
       lightLevel: 0,
-      pulsePhase: Math.random() * Math.PI * 2,
+      pulsePhase: 0,
       charge: 0,
       isCharging: false,
       chargeRate: 0.1, // Charge speed
     }));
 
-    // Initialize AI agents
+    // SERVER-AUTHORITATIVE: All game entities come from server
+    // aiAgents will be populated with server bots + remote players from world_state
     state.aiAgents = [];
-    for (let i = 0; i < AI_AGENT_COUNT; i++) {
-      const x = randomRange(100, WORLD_SIZE - 100);
-      const y = randomRange(100, WORLD_SIZE - 100);
-      const color = randomElement(Object.values(LIGHT_COLORS)).color;
-      const personality = randomElement([...PERSONALITY_TYPES]);
-      // 70% of agents in genesis (default realm), 30% in other realms
-      const realmId = Math.random() < 0.7 ? DEFAULT_REALM : randomElement(ALL_REALM_IDS);
 
-      state.aiAgents.push(new AIAgent(x, y, color, realmId, personality));
-    }
-
-    // Fragments now come from server - initialize empty, will be populated by world_state
+    // Fragments come from server - initialize empty
     state.fragments = [];
 
-    // Clear effects
+    // Clear local effects (particles, ripples are client-side visual only)
     state.particles = [];
     state.ripples = [];
     state.shockwaves = [];
     state.bonds = [];
 
-    // Initialize Visual Effects
+    // Initialize Visual Effects - all server-authoritative now
+    // These will be populated from world_state
     state.nebulae = [];
     state.stars = [];
     state.lightTrails = [];
     state.localFragments = [];
-    state.echoes = [];
+    state.echoes = [];  // Server-authoritative
     state.signals = [];
     state.lightBridges = [];
     state.pulseRipples = [];
     state.currentSeason = 'spring';
     state.darknessIntensity = 0;
-
-    // Spawn initial nebulae
-    for (let i = 0; i < 12; i++) {
-      state.nebulae.push({
-        x: randomRange(0, WORLD_SIZE),
-        y: randomRange(0, WORLD_SIZE),
-        radius: randomRange(300, 800),
-        hue: randomRange(0, 360),
-        alpha: randomRange(0.2, 0.5)
-      });
-    }
-
-    // Spawn initial stars
-    for (let i = 0; i < 400; i++) {
-      state.stars.push({
-        x: randomRange(0, WORLD_SIZE),
-        y: randomRange(0, WORLD_SIZE),
-        size: randomRange(1, 3),
-        alpha: randomRange(0.5, 1),
-        twinklePhase: Math.random() * Math.PI * 2
-      });
-    }
-
-    // Spawn initial echoes (messages left by past visitors)
-    const echoMessages = [
-      { name: 'Wanderer', text: 'The stars remember us...' },
-      { name: 'Stargazer', text: 'Look up, friend.' },
-      { name: 'Dreamwalker', text: 'We are all connected.' },
-      { name: 'Lightkeeper', text: 'Leave your mark.' },
-      { name: 'Voidtouched', text: 'Embrace the dark.' },
-      { name: 'Starforger', text: 'Create something beautiful.' },
-      { name: 'Celestial', text: 'The cosmos sings.' },
-      { name: 'Beacon', text: 'Find the light within.' },
-    ];
-    for (let i = 0; i < 15; i++) {
-      const echo = echoMessages[i % echoMessages.length];
-      state.echoes.push({
-        id: `echo_${i}`,
-        x: randomRange(WORLD_SIZE * 0.1, WORLD_SIZE * 0.9),
-        y: randomRange(WORLD_SIZE * 0.1, WORLD_SIZE * 0.9),
-        name: echo.name,
-        text: echo.text,
-        hue: Math.floor(Math.random() * 360),
-        createdAt: Date.now() - randomRange(0, 86400000), // Random time in last 24h
-        ignited: Math.floor(Math.random() * 10),
-        r: 20 + Math.random() * 10,
-        pulse: Math.random() * Math.PI * 2,
-      });
-    }
 
     // Set game as started
     state.gameStarted = true;
@@ -353,13 +296,18 @@ export function useGameState(): UseGameStateReturn {
       
       const state = gameState.current;
       const remotePlayers = data.players.filter((p: any) => p.id !== playerId);
+      const serverBots = data.bots || [];
       
       // Debug: Log positions to verify server is sending correct data
-      if (remotePlayers.length > 0 && Math.random() < 0.02) {
-        console.log(`🌐 My pos: (${Math.round(state.playerX)}, ${Math.round(state.playerY)}) | Remote: ${remotePlayers.map((p: any) => `${p.id.substring(0,10)}@(${p.x},${p.y})`).join(', ')}`);
+      if ((remotePlayers.length > 0 || serverBots.length > 0) && Math.random() < 0.02) {
+        console.log(`🌐 My pos: (${Math.round(state.playerX)}, ${Math.round(state.playerY)}) | Players: ${remotePlayers.length} | Bots: ${serverBots.length}`);
       }
       
-      // Update fragments from server (server-authoritative)
+      // ═══════════════════════════════════════════════════════════════════════
+      // SERVER-AUTHORITATIVE: Update ALL entities from server
+      // ═══════════════════════════════════════════════════════════════════════
+      
+      // Update fragments from server
       if (data.fragments && Array.isArray(data.fragments)) {
         state.fragments = data.fragments.map((f: any) => ({
           id: f.id,
@@ -374,36 +322,98 @@ export function useGameState(): UseGameStateReturn {
         }));
       }
       
-      // Update or add remote players
-      for (const playerData of remotePlayers) {
-        const existingIndex = state.aiAgents.findIndex(a => a.id === playerData.id);
-        
-        if (existingIndex >= 0) {
-          // Update existing
-          const agent = state.aiAgents[existingIndex];
-          agent.x = playerData.x;
-          agent.y = playerData.y;
+      // Update nebulae from server (cosmetic, consistent for all players)
+      if (data.nebulae && Array.isArray(data.nebulae)) {
+        state.nebulae = data.nebulae;
+      }
+      
+      // Update stars from server (cosmetic, consistent for all players)
+      if (data.stars && Array.isArray(data.stars)) {
+        state.stars = data.stars;
+      }
+      
+      // Update echoes from server
+      if (data.echoes && Array.isArray(data.echoes)) {
+        state.echoes = data.echoes.map((e: any) => ({
+          id: e.id,
+          x: e.x,
+          y: e.y,
+          name: e.playerName || 'Unknown',
+          text: e.message || '',
+          hue: e.hue || 180,
+          createdAt: e.createdAt,
+          ignited: e.resonanceCount || 0,
+          r: 20,
+          pulse: 0
+        }));
+      }
+      
+      // Build combined list of aiAgents from: server bots + remote players
+      // This replaces ALL local agent generation
+      const hueToColor = (hue: number) => `hsl(${hue}, 70%, 60%)`;
+      
+      // Create lookup of current agents by ID for efficient updates
+      const currentAgentsById = new Map<string, any>();
+      for (const agent of state.aiAgents) {
+        currentAgentsById.set(agent.id, agent);
+      }
+      
+      const newAgentsList: any[] = [];
+      
+      // Process server bots (server-authoritative AI characters)
+      for (const botData of serverBots) {
+        const existing = currentAgentsById.get(botData.id);
+        if (existing) {
+          // Update existing bot
+          existing.x = botData.x;
+          existing.y = botData.y;
+          existing.name = botData.name;
+          if (botData.singing) existing.singing = botData.singing;
+          if (botData.pulsing) existing.pulsing = botData.pulsing;
+          if (botData.message) existing.currentMessage = botData.message;
+          newAgentsList.push(existing);
         } else {
-          // Add new remote player as an "Agent"
-          const hueToColor = (hue: number) => `hsl(${hue}, 70%, 60%)`;
+          // Create new bot agent
           const newAgent = new AIAgent(
-            playerData.x, 
-            playerData.y, 
-            hueToColor(playerData.hue || 180), 
-            state.currentRealm || DEFAULT_REALM, 
+            botData.x,
+            botData.y,
+            hueToColor(botData.hue || 180),
+            state.currentRealm || DEFAULT_REALM,
+            'social'
+          );
+          newAgent.id = botData.id;
+          newAgent.name = botData.name || 'Bot';
+          // Note: xp is tracked server-side, not needed on client
+          newAgentsList.push(newAgent);
+        }
+      }
+      
+      // Process remote players
+      for (const playerData of remotePlayers) {
+        const existing = currentAgentsById.get(playerData.id);
+        if (existing) {
+          // Update existing player
+          existing.x = playerData.x;
+          existing.y = playerData.y;
+          existing.name = playerData.name || `Player_${playerData.id.substring(0, 6)}`;
+          newAgentsList.push(existing);
+        } else {
+          // Create new player agent
+          const newAgent = new AIAgent(
+            playerData.x,
+            playerData.y,
+            hueToColor(playerData.hue || 180),
+            state.currentRealm || DEFAULT_REALM,
             'social'
           );
           newAgent.id = playerData.id;
           newAgent.name = playerData.name || `Player_${playerData.id.substring(0, 6)}`;
-          state.aiAgents.push(newAgent);
+          newAgentsList.push(newAgent);
         }
       }
       
-      // Remove players that are no longer in the world state
-      const remoteIds = new Set(remotePlayers.map((p: any) => p.id));
-      state.aiAgents = state.aiAgents.filter(
-        agent => !agent.id.startsWith('player_') || remoteIds.has(agent.id)
-      );
+      // Replace entire aiAgents list with server-authoritative list
+      state.aiAgents = newAgentsList;
     };
     
     (gameClient as any).on('world_state', handleWorldState);
@@ -451,28 +461,11 @@ export function useGameState(): UseGameStateReturn {
     };
     (gameClient as any).on('fragment_collected', handleFragmentCollected);
 
-    // Listen for individual player updates (fallback/legacy)
+    // Listen for individual player updates (legacy fallback - world_state is primary)
+    // This handler is kept for backward compatibility but world_state is authoritative
     const handlePlayerUpdate = (data: any) => {
-      if (!data || data.id === playerId) return; // Ignore self
-
-      const state = gameState.current;
-      // Check if agent/player already exists
-      const existingIndex = state.aiAgents.findIndex(a => a.id === data.id);
-
-      if (existingIndex >= 0) {
-        // Update existing
-        const agent = state.aiAgents[existingIndex];
-        agent.x = data.x;
-        agent.y = data.y;
-        // agent.hue = data.hue; 
-      } else {
-        // Add new remote player as an "Agent" for now
-        const newAgent = new AIAgent(data.x, data.y, '#FFD700', data.realm, 'social'); // Default color/personality
-        newAgent.id = data.id;
-        newAgent.name = data.name;
-        // Override to mark as remote player if AIAgent supports it, or just rely on ID
-        state.aiAgents.push(newAgent);
-      }
+      // No-op: world_state handler is authoritative for all entities
+      // This is kept for potential direct player updates from server
     };
     
     (gameClient as any).on('player_update', handlePlayerUpdate);
@@ -488,8 +481,22 @@ export function useGameState(): UseGameStateReturn {
 
   }, [playerId]);
 
-  // Note: spawnFragments has been removed - fragments are now server-authoritative
-  // The server initializes fragments per realm and broadcasts them via world_state
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SERVER-AUTHORITATIVE ARCHITECTURE
+  // ═══════════════════════════════════════════════════════════════════════════
+  // All game entities (fragments, bots, players, nebulae, stars, echoes) are
+  // now owned and broadcast by the server. The client is a "dumb renderer"
+  // that receives world_state and renders what the server tells it.
+  //
+  // Client sends INPUTS:
+  // - Movement (player_update)
+  // - Collection requests (collect_fragment)
+  // - Actions (sing, pulse, emote)
+  //
+  // Server sends WORLD STATE:
+  // - All entity positions and states
+  // - Client just renders it
+  // ═══════════════════════════════════════════════════════════════════════════
 
   /**
    * Update player name and persist to storage

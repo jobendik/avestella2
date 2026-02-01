@@ -125,6 +125,11 @@ export class WebSocketHandler {
     private fragmentIdCounter = 0;
     private lastFragmentSpawn: Map<string, number> = new Map();
 
+    // Server-authoritative visual entities (shared across all realms - cosmetic only)
+    private nebulae: Array<{ id: string; x: number; y: number; radius: number; hue: number; alpha: number }> = [];
+    private stars: Array<{ id: string; x: number; y: number; size: number; alpha: number; twinklePhase: number }> = [];
+    private visualsInitialized = false;
+
     // Timing constants
     private readonly PLAYER_TIMEOUT = 30000;
     private readonly CLEANUP_INTERVAL = 10000;
@@ -233,6 +238,48 @@ export class WebSocketHandler {
             this.lastFragmentSpawn.set(realm, Date.now());
         }
         console.log(`✨ Initialized ${realmNames.length} realms with ${this.INITIAL_FRAGMENTS_PER_REALM} fragments each`);
+
+        // Initialize visual entities (nebulae and stars) - shared across realms
+        this.initializeVisualEntities();
+    }
+
+    /**
+     * Initialize server-authoritative visual entities (nebulae, stars)
+     * These are cosmetic but must be consistent for all players
+     */
+    private initializeVisualEntities(): void {
+        if (this.visualsInitialized) return;
+
+        // Use seeded random for consistent visuals across restarts
+        const seed = 42424242; // Fixed seed for consistent world
+        const random = this.seededRandom(seed);
+
+        // Generate nebulae
+        for (let i = 0; i < 12; i++) {
+            this.nebulae.push({
+                id: `nebula_${i}`,
+                x: random() * this.WORLD_SIZE,
+                y: random() * this.WORLD_SIZE,
+                radius: 300 + random() * 500,
+                hue: random() * 360,
+                alpha: 0.2 + random() * 0.3
+            });
+        }
+
+        // Generate stars
+        for (let i = 0; i < 400; i++) {
+            this.stars.push({
+                id: `star_${i}`,
+                x: random() * this.WORLD_SIZE,
+                y: random() * this.WORLD_SIZE,
+                size: 1 + random() * 2,
+                alpha: 0.5 + random() * 0.5,
+                twinklePhase: random() * Math.PI * 2
+            });
+        }
+
+        this.visualsInitialized = true;
+        console.log(`🌌 Initialized ${this.nebulae.length} nebulae and ${this.stars.length} stars`);
     }
 
     /**
@@ -1708,6 +1755,18 @@ export class WebSocketHandler {
             }))
             : [];
 
+        // Gather power-ups for this realm
+        const powerUpsArray = Array.from(this.powerUps.values())
+            .filter(p => !p.collectedBy && p.expiresAt > Date.now())
+            .map(p => ({
+                id: p.id,
+                type: p.type,
+                x: Math.round(p.x),
+                y: Math.round(p.y),
+                expiresAt: p.expiresAt,
+                config: p.config
+            }));
+
         const worldState = {
             type: 'world_state',
             data: {
@@ -1715,6 +1774,9 @@ export class WebSocketHandler {
                 bots,
                 echoes,
                 fragments: fragmentsArray,
+                powerUps: powerUpsArray,
+                nebulae: this.nebulae,
+                stars: this.stars,
                 litStars: Array.from(this.litStars),
                 serverTime: Date.now()
             },
