@@ -52,7 +52,7 @@ export class VoiceHandlers {
             if (result.success && result.room) {
                 // Get participant IDs from the room
                 const participantIds = Array.from(result.room.currentParticipants);
-                
+
                 ctx.send(connection.ws, {
                     type: 'voice_room_joined',
                     data: {
@@ -170,6 +170,7 @@ export class VoiceHandlers {
             if (!room) return;
 
             voiceChannelService.setSpeaking(connection.playerId, speaking);
+            connection.isSpeaking = speaking;
 
             // Broadcast to room participants
             const roomParticipants = voiceChannelService.getRoomParticipants(room.id);

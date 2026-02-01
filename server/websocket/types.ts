@@ -34,6 +34,13 @@ export interface PlayerConnection {
     dirty?: boolean;
     speaking?: boolean;
 
+    // Social State (Synced)
+    currentMessage?: string;
+    messageExpiresAt?: number;
+    isPulsing?: boolean;
+    pulseExpiresAt?: number;
+    isSpeaking?: boolean;
+
     // Chat rate limiting
     lastChatTime?: number;
     mutedPlayers?: Set<string>;

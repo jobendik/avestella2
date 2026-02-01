@@ -181,6 +181,7 @@ export class AIAgent implements IAIAgent {
   followTargetX: number | null;
   followTargetY: number | null;
   isRemotePlayer: boolean;
+  isSpeaking: boolean = false;
   fragmentsCollected: number = 0;
 
   // ═══════════════════════════════════════════════════════════════════════════

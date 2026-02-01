@@ -71,6 +71,10 @@ export class GameActionHandlers {
                 timestamp: now
             };
 
+            // Update social state
+            connection.isPulsing = true;
+            connection.pulseExpiresAt = now + 1000;
+
             // Broadcast to nearby players
             if (connection.realm && ctx.realms.has(connection.realm)) {
                 const realm = ctx.realms.get(connection.realm)!;

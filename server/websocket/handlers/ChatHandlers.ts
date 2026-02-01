@@ -44,6 +44,10 @@ export class ChatHandlers {
             // Filter message
             const filtered = filterMessage(trimmed);
 
+            // Update connection state for world sync
+            connection.currentMessage = filtered;
+            connection.messageExpiresAt = now + 5000;
+
             const chatMessage = {
                 type: 'chat_message',
                 data: {

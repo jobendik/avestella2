@@ -338,6 +338,8 @@ export function useGameState(): UseGameStateReturn {
           if (botData.singing) existing.singing = botData.singing;
           if (botData.pulsing) existing.pulsing = botData.pulsing;
           if (botData.message) existing.currentMessage = botData.message;
+          if (botData.speaking !== undefined) existing.isSpeaking = botData.speaking;
+          if (botData.pulsing !== undefined) existing.isPulsing = botData.pulsing;
           newAgentsList.push(existing);
         } else {
           // Create new bot agent
@@ -364,6 +366,11 @@ export function useGameState(): UseGameStateReturn {
           existing.x = playerData.x;
           existing.y = playerData.y;
           existing.name = playerData.name || `Player_${playerData.id.substring(0, 6)}`;
+          // Sync social state
+          if (playerData.message !== undefined) existing.currentMessage = playerData.message;
+          if (playerData.speaking !== undefined) existing.isSpeaking = playerData.speaking;
+          if (playerData.pulsing !== undefined) existing.isPulsing = playerData.pulsing;
+
           newAgentsList.push(existing);
         } else {
           // Create new player agent

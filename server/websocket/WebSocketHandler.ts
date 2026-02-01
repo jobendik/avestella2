@@ -1562,6 +1562,21 @@ export class WebSocketHandler {
             bot.update(realmConnections);
         }
 
+        // Clean up expired chat messages
+        for (const connection of this.connections.values()) {
+            if (connection.messageExpiresAt && connection.messageExpiresAt < now) {
+                connection.currentMessage = undefined;
+                connection.messageExpiresAt = undefined;
+                connection.dirty = true;
+            }
+
+            if (connection.pulseExpiresAt && connection.pulseExpiresAt < now) {
+                connection.isPulsing = false;
+                connection.pulseExpiresAt = undefined;
+                connection.dirty = true;
+            }
+        }
+
         // Ensure minimum population
         this.ensureMinimumPopulation();
 
@@ -1731,7 +1746,11 @@ export class WebSocketHandler {
                 hue: conn.color,
                 xp: conn.xp,
                 level: conn.level,
-                isBot: conn.isBot
+                isBot: conn.isBot,
+                // Synced Social State
+                message: conn.currentMessage,
+                speaking: conn.isSpeaking,
+                pulsing: conn.isPulsing
             });
         }
 
