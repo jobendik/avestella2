@@ -346,7 +346,8 @@ export function useGameState(): UseGameStateReturn {
             botData.y,
             hueToColor(botData.hue || 180),
             state.currentRealm || DEFAULT_REALM,
-            'social'
+            'social',
+            true // isRemotePlayer (server-controlled)
           );
           newAgent.id = botData.id;
           newAgent.name = botData.name || 'Bot';
@@ -371,7 +372,8 @@ export function useGameState(): UseGameStateReturn {
             playerData.y,
             hueToColor(playerData.hue || 180),
             state.currentRealm || DEFAULT_REALM,
-            'social'
+            'social',
+            true // isRemotePlayer
           );
           newAgent.id = playerData.id;
           newAgent.name = playerData.name || `Player_${playerData.id.substring(0, 6)}`;

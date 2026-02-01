@@ -180,6 +180,7 @@ export class AIAgent implements IAIAgent {
   lastPulseTime: number;
   followTargetX: number | null;
   followTargetY: number | null;
+  isRemotePlayer: boolean;
   fragmentsCollected: number = 0;
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -256,9 +257,11 @@ export class AIAgent implements IAIAgent {
     y: number,
     color: string,
     realmId: string = 'genesis',
-    personalityType: PersonalityType = 'curious'
+    personalityType: PersonalityType = 'curious',
+    isRemotePlayer: boolean = false
   ) {
     this.id = `agent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    this.isRemotePlayer = isRemotePlayer;
     this.realmId = realmId;
     this.name = this.generateName();
     this.x = x;
@@ -305,19 +308,19 @@ export class AIAgent implements IAIAgent {
 
     // Initialize emotional state based on personality
     this.initializeEmotionalSystem(personalityType);
-    
+
     // Initialize behavior variance based on personality
     this.initializeBehaviorVariance(personalityType);
-    
+
     // Set initial curiosity based on personality
     this.curiosityLevel = this.getCuriosityForPersonality(personalityType);
-    
+
     // Set mood stability based on personality
     this.moodStability = this.getMoodStabilityForPersonality(personalityType);
-    
+
     // Set social energy baseline
     this.socialEnergy = this.getSocialEnergyForPersonality(personalityType);
-    
+
     // Add initial "born" memory
     this.addMemory({
       type: 'event',
@@ -331,7 +334,7 @@ export class AIAgent implements IAIAgent {
 
     // Set initial goal based on personality
     this.setInitialGoal(personalityType);
-    
+
     // Random initial timers to prevent synchronized behavior
     this.fidgetTimer = Math.random() * 5;
     this.lookAroundTimer = Math.random() * 8;
@@ -506,7 +509,7 @@ export class AIAgent implements IAIAgent {
     this.followTargetX = x;
     this.followTargetY = y;
     this.state = 'following';
-    
+
     // Add memory of being called
     this.addMemory({
       type: 'interaction',
@@ -516,7 +519,7 @@ export class AIAgent implements IAIAgent {
       timestamp: Date.now(),
       details: 'Summoned by player pulse'
     });
-    
+
     // React emotionally
     this.triggerEmotion('excited', 0.6, 10, 'called by player');
   }
@@ -547,7 +550,7 @@ export class AIAgent implements IAIAgent {
    */
   private addMemory(memory: MemoryEntry): void {
     this.memories.push(memory);
-    
+
     // Prune old, less important memories when at limit
     if (this.memories.length > this.maxMemories) {
       // Sort by importance * recency score
@@ -580,7 +583,7 @@ export class AIAgent implements IAIAgent {
    */
   private updateRelationship(entityId: string, entityName: string, sentiment: number): void {
     const existing = this.relationships.get(entityId);
-    
+
     if (existing) {
       existing.affinity = Math.max(-1, Math.min(1, existing.affinity + sentiment * 0.1));
       existing.interactions++;
@@ -623,12 +626,12 @@ export class AIAgent implements IAIAgent {
   private triggerEmotion(emotion: EmotionalState, intensity: number, duration: number, trigger: string): void {
     // Mood stability affects how easily emotions change
     const actualIntensity = intensity * (1 - this.moodStability * 0.5);
-    
+
     // Only change if new emotion is more intense or different enough
     if (actualIntensity > this.emotion.intensity * 0.6 || emotion !== this.emotion.current) {
       this.emotionHistory.push(this.emotion.current);
       if (this.emotionHistory.length > 10) this.emotionHistory.shift();
-      
+
       this.emotion = {
         current: emotion,
         intensity: Math.min(1, actualIntensity),
@@ -645,15 +648,15 @@ export class AIAgent implements IAIAgent {
     // Decay emotion duration
     this.emotion.duration -= deltaTime;
     this.emotion.intensity *= (1 - deltaTime * 0.02);
-    
+
     // If emotion expired, transition to default based on context
     if (this.emotion.duration <= 0 || this.emotion.intensity < 0.1) {
       this.transitionToDefaultEmotion();
     }
-    
+
     // Update fatigue
     this.fatigueLevel = Math.min(1, this.fatigueLevel + deltaTime * 0.001);
-    
+
     // Fatigue affects emotions
     if (this.fatigueLevel > 0.7 && this.emotion.current !== 'tired') {
       this.triggerEmotion('tired', 0.4, 30, 'fatigue');
@@ -669,13 +672,13 @@ export class AIAgent implements IAIAgent {
       this.emotion = { current: 'lonely', intensity: 0.4, duration: 20, triggers: ['low social energy'] };
       return;
     }
-    
+
     // Check fatigue
     if (this.fatigueLevel > 0.6) {
       this.emotion = { current: 'tired', intensity: this.fatigueLevel, duration: 30, triggers: ['tired'] };
       return;
     }
-    
+
     // Default to content with slight personality bias
     this.emotion = { current: 'content', intensity: 0.3, duration: 40, triggers: ['default'] };
   }
@@ -694,10 +697,10 @@ export class AIAgent implements IAIAgent {
       playful: { speedMod: 1.4, socialMod: 1.3, chatMod: 1.6 },
       contemplative: { speedMod: 0.7, socialMod: 0.6, chatMod: 0.8 }
     };
-    
+
     const base = mods[this.emotion.current] || mods.content;
     const intensity = this.emotion.intensity;
-    
+
     return {
       speedMod: lerp(1.0, base.speedMod, intensity),
       socialMod: lerp(1.0, base.socialMod, intensity),
@@ -720,7 +723,7 @@ export class AIAgent implements IAIAgent {
   ): void {
     // Track time alive
     this.timeSinceSpawn += deltaTime;
-    
+
     // Update pulse animation
     this.pulsePhase += deltaTime * 2;
 
@@ -732,22 +735,31 @@ export class AIAgent implements IAIAgent {
       }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // REMOTE PLAYER BYPASS - IMPORTANT!
+    // ─────────────────────────────────────────────────────────────────────────
+    // If this agent represents a remote player, they are controlled by SERVER STATE,
+    // not by local AI logic. We only run the visual updates above and then return.
+    if (this.isRemotePlayer) {
+      return;
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // UPDATE ADVANCED AI SYSTEMS
     // ═══════════════════════════════════════════════════════════════════════
 
     // Update emotional state
     this.updateEmotionalState(deltaTime);
-    
+
     // Update social energy (regenerates when alone, depletes with interaction)
     this.updateSocialEnergy(deltaTime, playerX, playerY, otherAgents);
-    
+
     // Update human-like behaviors
     this.updateHumanBehaviors(deltaTime, playerX, playerY, otherAgents);
-    
+
     // Update goals
     this.updateGoals(deltaTime, playerX, playerY, otherAgents, beacons ?? [], fragments ?? []);
-    
+
     // Process player proximity for familiarity building
     this.processPlayerProximity(playerX, playerY, deltaTime);
 
@@ -757,15 +769,15 @@ export class AIAgent implements IAIAgent {
 
     if (this.isPaused) {
       this.pauseTimer -= deltaTime * 1000;
-      
+
       // While paused, do idle animations
       this.idleAnimation += deltaTime;
-      
+
       // Occasionally look around while paused
       if (Math.random() < 0.01 * deltaTime * 60) {
         this.wanderAngle += (Math.random() - 0.5) * 0.5;
       }
-      
+
       if (this.pauseTimer <= 0) {
         this.isPaused = false;
         // Sometimes say something after a pause
@@ -785,7 +797,7 @@ export class AIAgent implements IAIAgent {
     // Natural pause behavior with variance
     const emotionalMods = this.getEmotionalModifiers();
     const adjustedPauseChance = this.pauseChance * (this.fatigueLevel + 0.5) / emotionalMods.speedMod;
-    
+
     if (Math.random() < adjustedPauseChance * deltaTime) {
       this.isPaused = true;
       this.pauseTimer = (1000 + Math.random() * 3000) * this.behaviorVariance;
@@ -807,7 +819,7 @@ export class AIAgent implements IAIAgent {
 
     this.decisionCooldown -= deltaTime;
     this.stateTimer -= deltaTime;
-    
+
     if (this.stateTimer <= 0 || this.decisionCooldown <= 0) {
       this.makeIntelligentDecision(playerX, playerY, otherAgents, beacons ?? [], fragments ?? []);
       // Variable decision intervals for more natural behavior
@@ -836,13 +848,13 @@ export class AIAgent implements IAIAgent {
 
   private updateSocialEnergy(deltaTime: number, playerX: number, playerY: number, otherAgents: IAIAgent[]): void {
     const distToPlayer = distance(this.x, this.y, playerX, playerY);
-    const nearbyAgentCount = otherAgents.filter(a => 
+    const nearbyAgentCount = otherAgents.filter(a =>
       a.id !== this.id && distance(this.x, this.y, a.x, a.y) < 200
     ).length;
-    
+
     // Social interaction depletes energy for introverts, energizes extroverts
     const isExtrovert = ['social', 'helper', 'guardian'].includes(this.personality.type);
-    
+
     if (distToPlayer < 200 || nearbyAgentCount > 0) {
       if (isExtrovert) {
         this.socialEnergy = Math.min(1, this.socialEnergy + deltaTime * 0.02);
@@ -873,14 +885,14 @@ export class AIAgent implements IAIAgent {
       this.performFidget();
       this.fidgetTimer = 3 + Math.random() * 7;
     }
-    
+
     // Look around timer - occasionally look in different directions
     this.lookAroundTimer -= deltaTime;
     if (this.lookAroundTimer <= 0) {
       this.performLookAround(playerX, playerY, otherAgents);
       this.lookAroundTimer = 5 + Math.random() * 10;
     }
-    
+
     // Spontaneous actions based on personality and emotion
     if (Math.random() < this.spontaneousActionChance * deltaTime * this.emotion.intensity) {
       this.performSpontaneousAction();
@@ -890,7 +902,7 @@ export class AIAgent implements IAIAgent {
   private performFidget(): void {
     // Small adjustment to wander angle
     this.wanderAngle += (Math.random() - 0.5) * 0.3;
-    
+
     // Slight position adjustment
     this.vx += (Math.random() - 0.5) * 0.5;
     this.vy += (Math.random() - 0.5) * 0.5;
@@ -899,13 +911,13 @@ export class AIAgent implements IAIAgent {
   private performLookAround(playerX: number, playerY: number, otherAgents: IAIAgent[]): void {
     // Set attention target to something interesting
     const interests: { x: number; y: number; type: string; priority: number }[] = [];
-    
+
     // Player is always interesting
     const distToPlayer = distance(this.x, this.y, playerX, playerY);
     if (distToPlayer < 500) {
       interests.push({ x: playerX, y: playerY, type: 'player', priority: 0.8 / (distToPlayer / 100) });
     }
-    
+
     // Nearby agents
     for (const agent of otherAgents) {
       if (agent.id !== this.id) {
@@ -917,27 +929,27 @@ export class AIAgent implements IAIAgent {
         }
       }
     }
-    
+
     // Random direction for curious types
     if (this.curiosityLevel > 0.5 && Math.random() < this.curiosityLevel) {
       const angle = Math.random() * Math.PI * 2;
-      interests.push({ 
-        x: this.x + Math.cos(angle) * 300, 
-        y: this.y + Math.sin(angle) * 300, 
-        type: 'curiosity', 
-        priority: this.curiosityLevel * 0.5 
+      interests.push({
+        x: this.x + Math.cos(angle) * 300,
+        y: this.y + Math.sin(angle) * 300,
+        type: 'curiosity',
+        priority: this.curiosityLevel * 0.5
       });
     }
-    
+
     // Pick highest priority interest
     if (interests.length > 0) {
       interests.sort((a, b) => b.priority - a.priority);
       this.attentionTarget = interests[0];
-      
+
       // Face the attention target
       if (this.attentionTarget) {
         this.wanderAngle = Math.atan2(
-          this.attentionTarget.y - this.y, 
+          this.attentionTarget.y - this.y,
           this.attentionTarget.x - this.x
         );
       }
@@ -951,7 +963,7 @@ export class AIAgent implements IAIAgent {
       { action: 'chat', chance: 0.4, condition: this.socialEnergy > 0.5 },
       { action: 'pause', chance: 0.3, condition: this.emotion.current === 'contemplative' }
     ];
-    
+
     for (const { action, chance, condition } of actions) {
       if (condition && Math.random() < chance) {
         switch (action) {
@@ -991,16 +1003,16 @@ export class AIAgent implements IAIAgent {
       this.selectNextGoal(playerX, playerY, otherAgents, beacons, fragments);
       return;
     }
-    
+
     // Update goal progress
     this.currentGoal.duration -= deltaTime;
-    
+
     // Check if goal is complete or timed out
     if (this.currentGoal.duration <= 0 || this.currentGoal.progress >= 1) {
       this.completeGoal();
       this.selectNextGoal(playerX, playerY, otherAgents, beacons, fragments);
     }
-    
+
     // Update progress based on goal type
     this.updateGoalProgress(playerX, playerY, otherAgents);
   }
@@ -1015,9 +1027,9 @@ export class AIAgent implements IAIAgent {
     const candidates: Goal[] = [];
     const distToPlayer = distance(this.x, this.y, playerX, playerY);
     const emotionalMods = this.getEmotionalModifiers();
-    
+
     // Add goals based on context and emotional state
-    
+
     // Explore goal
     if (this.curiosityLevel > 0.3) {
       candidates.push({
@@ -1028,7 +1040,7 @@ export class AIAgent implements IAIAgent {
         reason: 'Curiosity beckons'
       });
     }
-    
+
     // Socialize with player goal
     if (distToPlayer < 500 && this.socialEnergy > 0.3) {
       const familiarity = this.playerFamiliarity;
@@ -1041,7 +1053,7 @@ export class AIAgent implements IAIAgent {
         reason: familiarity > 0.5 ? 'Want to hang out with friend' : 'Curious about player'
       });
     }
-    
+
     // Find friend goal
     const friendAgents = otherAgents.filter(a => {
       const rel = this.getRelationship(a.id);
@@ -1058,7 +1070,7 @@ export class AIAgent implements IAIAgent {
         reason: `Looking for ${friend.name}`
       });
     }
-    
+
     // Beacon goal
     const nearestBeacon = this.findNearestBeacon(beacons);
     if (nearestBeacon && this.personality.beaconAffinity > 0.3) {
@@ -1071,7 +1083,7 @@ export class AIAgent implements IAIAgent {
         reason: 'The beacon calls'
       });
     }
-    
+
     // Collect fragments goal
     const nearbyFragments = fragments.filter(f => !f.collected && distance(this.x, this.y, f.x, f.y) < 400);
     if (nearbyFragments.length > 0) {
@@ -1085,7 +1097,7 @@ export class AIAgent implements IAIAgent {
         reason: nearest.isGolden ? 'Golden fragment spotted!' : 'Shiny thing nearby'
       });
     }
-    
+
     // Rest goal (when tired)
     if (this.fatigueLevel > 0.6) {
       candidates.push({
@@ -1096,7 +1108,7 @@ export class AIAgent implements IAIAgent {
         reason: 'Need to rest'
       });
     }
-    
+
     // Wander goal (default)
     candidates.push({
       type: 'wander',
@@ -1105,15 +1117,15 @@ export class AIAgent implements IAIAgent {
       progress: 0,
       reason: 'Just wandering'
     });
-    
+
     // Select goal with weighted randomness
     candidates.sort((a, b) => b.priority - a.priority);
-    
+
     // Use weighted selection for top candidates
     const topCandidates = candidates.slice(0, 3);
     const totalWeight = topCandidates.reduce((sum, g) => sum + g.priority, 0);
     let random = Math.random() * totalWeight;
-    
+
     for (const candidate of topCandidates) {
       random -= candidate.priority;
       if (random <= 0) {
@@ -1122,7 +1134,7 @@ export class AIAgent implements IAIAgent {
         break;
       }
     }
-    
+
     // Fallback
     if (!this.currentGoal) {
       this.currentGoal = candidates[candidates.length - 1];
@@ -1131,9 +1143,9 @@ export class AIAgent implements IAIAgent {
 
   private updateGoalProgress(playerX: number, playerY: number, otherAgents: IAIAgent[]): void {
     if (!this.currentGoal) return;
-    
+
     const goal = this.currentGoal;
-    
+
     switch (goal.type) {
       case 'follow_player':
         const distToPlayer = distance(this.x, this.y, playerX, playerY);
@@ -1145,7 +1157,7 @@ export class AIAgent implements IAIAgent {
           }
         }
         break;
-        
+
       case 'beacon':
         if (goal.target) {
           const distToBeacon = distance(this.x, this.y, goal.target.x, goal.target.y);
@@ -1157,12 +1169,12 @@ export class AIAgent implements IAIAgent {
           }
         }
         break;
-        
+
       case 'rest':
         goal.progress += 0.01;
         this.fatigueLevel = Math.max(0, this.fatigueLevel - 0.02);
         break;
-        
+
       case 'explore':
       case 'wander':
         goal.progress += 0.01;
@@ -1172,7 +1184,7 @@ export class AIAgent implements IAIAgent {
 
   private completeGoal(): void {
     if (!this.currentGoal) return;
-    
+
     // Add memory of completed goal
     if (this.currentGoal.progress >= 0.8) {
       this.addMemory({
@@ -1185,7 +1197,7 @@ export class AIAgent implements IAIAgent {
         details: `Completed ${this.currentGoal.type}: ${this.currentGoal.reason}`
       });
     }
-    
+
     this.currentGoal = null;
   }
 
@@ -1214,7 +1226,7 @@ export class AIAgent implements IAIAgent {
     const distToPlayer = distance(this.x, this.y, playerX, playerY);
     const { socialRadius, beaconAffinity, chatFrequency } = this.personalityConfig;
     const emotionalMods = this.getEmotionalModifiers();
-    
+
     this.lastDecisionFactors = [];
 
     // Priority: If we have a follow target from a pulse command, go there
@@ -1251,7 +1263,7 @@ export class AIAgent implements IAIAgent {
         this.lastDecisionFactors.push('seeking company (lonely)');
         return;
       }
-      
+
       // Or approach player
       if (distToPlayer < 600) {
         this.state = 'following';
@@ -1265,13 +1277,13 @@ export class AIAgent implements IAIAgent {
     // Check for nearby social targets (player) with familiarity boost
     const socialThreshold = socialRadius * emotionalMods.socialMod;
     const interactionChance = 0.3 + this.playerFamiliarity * 0.3;
-    
+
     if (distToPlayer < socialThreshold && Math.random() < interactionChance) {
       this.state = 'following';
       this.targetX = playerX;
       this.targetY = playerY;
       this.lastDecisionFactors.push('approaching player');
-      
+
       // Context-aware greeting
       this.maybeGreetPlayer(distToPlayer);
       return;
@@ -1287,7 +1299,7 @@ export class AIAgent implements IAIAgent {
         this.targetX = nearestBeacon.x;
         this.targetY = nearestBeacon.y;
         this.lastDecisionFactors.push('seeking beacon');
-        
+
         if (Math.random() < 0.2) {
           this.sayContextual('beacon', 'approaching');
         }
@@ -1302,10 +1314,10 @@ export class AIAgent implements IAIAgent {
       this.socialTarget = nearbyAgent;
       this.targetX = nearbyAgent.x;
       this.targetY = nearbyAgent.y;
-      
+
       // Update relationship
       this.updateRelationship(nearbyAgent.id, nearbyAgent.name, 0.1);
-      
+
       this.maybeChat(chatFrequency * emotionalMods.chatMod);
       this.lastDecisionFactors.push('socializing with agent');
       return;
@@ -1333,14 +1345,14 @@ export class AIAgent implements IAIAgent {
     beacons: Beacon[]
   ): void {
     if (!this.currentGoal) return;
-    
+
     switch (this.currentGoal.type) {
       case 'follow_player':
         this.state = 'following';
         this.targetX = playerX;
         this.targetY = playerY;
         break;
-        
+
       case 'find_friend':
         if (this.currentGoal.target) {
           this.state = 'social';
@@ -1348,7 +1360,7 @@ export class AIAgent implements IAIAgent {
           this.targetY = this.currentGoal.target.y;
         }
         break;
-        
+
       case 'beacon':
         if (this.currentGoal.target) {
           this.state = 'seeking_beacon';
@@ -1356,7 +1368,7 @@ export class AIAgent implements IAIAgent {
           this.targetY = this.currentGoal.target.y;
         }
         break;
-        
+
       case 'collect':
         if (this.currentGoal.target) {
           this.state = 'gathering';
@@ -1364,7 +1376,7 @@ export class AIAgent implements IAIAgent {
           this.targetY = this.currentGoal.target.y;
         }
         break;
-        
+
       case 'rest':
         this.state = 'idle';
         this.targetX = null;
@@ -1372,11 +1384,11 @@ export class AIAgent implements IAIAgent {
         this.isPaused = true;
         this.pauseTimer = 3000;
         break;
-        
+
       case 'explore':
         this.investigateRandomDirection();
         break;
-        
+
       case 'wander':
       default:
         this.wander();
@@ -1389,7 +1401,7 @@ export class AIAgent implements IAIAgent {
    */
   private investigateRandomDirection(): void {
     this.state = 'seeking';
-    
+
     // Check for attention target
     if (this.attentionTarget) {
       this.targetX = this.attentionTarget.x;
@@ -1401,10 +1413,10 @@ export class AIAgent implements IAIAgent {
       this.targetX = this.x + Math.cos(this.wanderAngle) * investigateDistance;
       this.targetY = this.y + Math.sin(this.wanderAngle) * investigateDistance;
     }
-    
+
     // Brief hesitation before moving (thinking)
     this.hesitationTimer = 0.2 + Math.random() * 0.3;
-    
+
     if (Math.random() < 0.15) {
       this.sayContextual('curious', 'exploring');
     }
@@ -1415,14 +1427,14 @@ export class AIAgent implements IAIAgent {
    */
   private wander(): void {
     this.state = 'wandering';
-    
+
     // More natural angle changes - small adjustments most of the time
-    const angleChange = Math.random() < 0.8 
-      ? randomRange(-0.3, 0.3) 
+    const angleChange = Math.random() < 0.8
+      ? randomRange(-0.3, 0.3)
       : randomRange(-1.0, 1.0);
-    
+
     this.wanderAngle += angleChange;
-    
+
     // Variable wander distances
     const wanderDistance = randomRange(30, this.wanderRange * 0.3);
     this.targetX = this.x + Math.cos(this.wanderAngle) * wanderDistance;
@@ -1436,17 +1448,17 @@ export class AIAgent implements IAIAgent {
   private processPlayerProximity(playerX: number, playerY: number, deltaTime: number): void {
     const distToPlayer = distance(this.x, this.y, playerX, playerY);
     const now = Date.now();
-    
+
     // PROACTIVE GREETING - When player gets close enough
     if (distToPlayer < 250) {
       // Build familiarity over time
       this.playerFamiliarity = Math.min(1, this.playerFamiliarity + deltaTime * 0.02);
-      
+
       // First time seeing player or player just arrived - ALWAYS greet
       const justArrived = now - this.lastPlayerInteraction > 30000; // 30 seconds
       const neverMet = this.playerInteractionCount === 0;
       const canGreet = now - this.lastChatTime > 8000; // 8 second cooldown between messages
-      
+
       if (canGreet && (neverMet || justArrived)) {
         // High chance to greet on first meeting or after absence
         const greetChance = neverMet ? 0.9 : 0.7;
@@ -1457,12 +1469,12 @@ export class AIAgent implements IAIAgent {
         // Random chance to say something while near player
         this.sayContextual(this.emotion.current, 'random');
       }
-      
+
       // Track interaction
       if (now - this.lastPlayerInteraction > 10000) {
         this.playerInteractionCount++;
         this.lastPlayerInteraction = now;
-        
+
         // Add memory of interaction
         this.addMemory({
           type: 'player',
@@ -1474,7 +1486,7 @@ export class AIAgent implements IAIAgent {
           timestamp: now,
           details: 'Spent time with player'
         });
-        
+
         // Trigger positive emotion from proximity
         if (this.socialEnergy > 0.3) {
           this.triggerEmotion('social', 0.4, 10, 'player nearby');
@@ -1495,7 +1507,7 @@ export class AIAgent implements IAIAgent {
     // Choose greeting based on familiarity and context
     let greetingType: string;
     let response: string;
-    
+
     if (isFirstMeeting) {
       greetingType = 'first_meeting';
       const greetings = [
@@ -1533,14 +1545,14 @@ export class AIAgent implements IAIAgent {
       ];
       response = greetings[Math.floor(Math.random() * greetings.length)];
     }
-    
+
     this.say(response, 4);
-    
+
     // Also pulse to acknowledge
     if (Math.random() < 0.5) {
       setTimeout(() => this.pulse(), 200);
     }
-    
+
     // Trigger excited/social emotion
     this.triggerEmotion('social', 0.5, 15, 'greeting player');
   }
@@ -1548,15 +1560,15 @@ export class AIAgent implements IAIAgent {
   private maybeGreetPlayer(distToPlayer: number): void {
     const now = Date.now();
     const timeSinceLastChat = now - this.lastChatTime;
-    
+
     // Don't spam greetings
     if (timeSinceLastChat < 8000) return;
-    
+
     const emotionalMods = this.getEmotionalModifiers();
     const greetChance = this.personalityConfig.chatFrequency * emotionalMods.chatMod * 2; // Doubled chance
-    
+
     if (Math.random() > greetChance) return;
-    
+
     this.proactiveGreet(distToPlayer, this.playerInteractionCount === 0);
   }
 
@@ -1570,10 +1582,10 @@ export class AIAgent implements IAIAgent {
   private sayContextual(category: string, subcategory: string): void {
     const categoryData = AI_CONVERSATIONS[category];
     if (!categoryData) return;
-    
+
     const messages = categoryData[subcategory] || categoryData[Object.keys(categoryData)[0]];
     if (!messages || messages.length === 0) return;
-    
+
     const message = messages[Math.floor(Math.random() * messages.length)];
     this.say(message, 3 + Math.random() * 2);
   }
@@ -1595,7 +1607,7 @@ export class AIAgent implements IAIAgent {
     if (this.emotion.current === 'contemplative') {
       return { category: 'contemplative', subcategory: 'peaceful' };
     }
-    
+
     // Check state
     if (this.state === 'seeking_beacon') {
       return { category: 'beacon', subcategory: 'approaching' };
@@ -1606,7 +1618,7 @@ export class AIAgent implements IAIAgent {
     if (this.state === 'social') {
       return { category: 'social', subcategory: 'bonding' };
     }
-    
+
     // Default based on time
     if (this.timeSinceSpawn < 30) {
       return { category: 'time_based', subcategory: 'just_started' };
@@ -1614,7 +1626,7 @@ export class AIAgent implements IAIAgent {
     if (this.fatigueLevel > 0.7) {
       return { category: 'time_based', subcategory: 'tired' };
     }
-    
+
     return { category: 'curious', subcategory: 'exploring' };
   }
 
@@ -1641,10 +1653,10 @@ export class AIAgent implements IAIAgent {
       // Base speed with personality and emotional modifiers
       const baseSpeed = this.personalityConfig.speed * 2;
       const adjustedSpeed = baseSpeed * speedMod * this.behaviorVariance;
-      
+
       // Add slight variance to movement for more natural look
       const variance = 1 + (Math.sin(this.timeSinceSpawn * 3) * 0.1);
-      
+
       // Calculate target velocity
       const targetVx = (dx / dist) * adjustedSpeed * deltaTime * 60 * variance;
       const targetVy = (dy / dist) * adjustedSpeed * deltaTime * 60 * variance;
@@ -1657,7 +1669,7 @@ export class AIAgent implements IAIAgent {
       // Apply velocity
       this.x += this.vx;
       this.y += this.vy;
-      
+
       // Update facing angle smoothly
       const targetAngle = Math.atan2(dy, dx);
       this.wanderAngle = lerp(this.wanderAngle, targetAngle, 0.1);
@@ -1665,7 +1677,7 @@ export class AIAgent implements IAIAgent {
       // Reached target - smooth stop
       this.vx *= 0.85;
       this.vy *= 0.85;
-      
+
       // Trigger arrival behavior
       if (dist < 3) {
         this.onReachedTarget();
@@ -1681,12 +1693,12 @@ export class AIAgent implements IAIAgent {
     if (Math.random() < 0.3) {
       this.hesitationTimer = 0.5 + Math.random() * 1.0;
     }
-    
+
     // Maybe look around
     if (Math.random() < 0.4) {
       this.lookAroundTimer = 0;
     }
-    
+
     // Clear target
     this.targetX = null;
     this.targetY = null;
@@ -1731,13 +1743,13 @@ export class AIAgent implements IAIAgent {
   private processFragmentCollection(fragments: Fragment[]): void {
     for (const fragment of fragments) {
       if (fragment.collected) continue;
-      
+
       const dist = distance(this.x, this.y, fragment.x, fragment.y);
-      
+
       if (dist < 30) {
         fragment.collected = true;
         this.collectFragment();
-        
+
         // React to collection
         if (fragment.isGolden) {
           this.triggerEmotion('excited', 0.8, 15, 'found golden fragment');
@@ -1745,7 +1757,7 @@ export class AIAgent implements IAIAgent {
         } else if (Math.random() < 0.2) {
           this.sayContextual('fragment', 'collecting');
         }
-        
+
         // Add memory
         this.addMemory({
           type: 'event',
@@ -1784,27 +1796,27 @@ export class AIAgent implements IAIAgent {
   private findNearbyAgent(agents: IAIAgent[], radius: number): IAIAgent | null {
     let bestCandidate: IAIAgent | null = null;
     let bestScore = -Infinity;
-    
+
     for (const agent of agents) {
       if (agent.id === this.id) continue;
-      
+
       const dist = distance(this.x, this.y, agent.x, agent.y);
       if (dist > radius) continue;
-      
+
       // Score based on distance and relationship
       const relationship = this.getRelationship(agent.id);
       const affinityBonus = relationship ? relationship.affinity * 100 : 0;
       const friendBonus = relationship?.isFriend ? 200 : 0;
       const distancePenalty = dist;
-      
+
       const score = affinityBonus + friendBonus - distancePenalty;
-      
+
       if (score > bestScore) {
         bestScore = score;
         bestCandidate = agent;
       }
     }
-    
+
     return bestCandidate;
   }
 
@@ -1873,38 +1885,38 @@ export class AIAgent implements IAIAgent {
     if (isGreeting) {
       // Always respond to greetings with high probability
       const shouldRespond = Math.random() < 0.85; // 85% chance to respond
-      
+
       if (shouldRespond && Date.now() - this.lastChatTime > 2000) {
         this.triggerEmotion('social', 0.6, 12, 'greeted by player');
         this.state = 'social';
-        
+
         // Choose response based on familiarity
-        const greetingResponses = this.playerFamiliarity > 0.5 
+        const greetingResponses = this.playerFamiliarity > 0.5
           ? [
-              'Hey friend! 👋',
-              'Hi there! Great to see you!',
-              'Hello again! ✨',
-              'Heyyy! 💫',
-              'Hey! What\'s up?',
-              'Hi! I was just thinking about you!',
-              'Oh hey! 🌟'
-            ]
+            'Hey friend! 👋',
+            'Hi there! Great to see you!',
+            'Hello again! ✨',
+            'Heyyy! 💫',
+            'Hey! What\'s up?',
+            'Hi! I was just thinking about you!',
+            'Oh hey! 🌟'
+          ]
           : [
-              'Hello! 👋',
-              'Hi there! ✨',
-              'Hey! Nice to meet you!',
-              'Hello, friend!',
-              'Hi! Welcome! 💫',
-              'Hey! 🌟',
-              'Hello! Come say hi!'
-            ];
-        
+            'Hello! 👋',
+            'Hi there! ✨',
+            'Hey! Nice to meet you!',
+            'Hello, friend!',
+            'Hi! Welcome! 💫',
+            'Hey! 🌟',
+            'Hello! Come say hi!'
+          ];
+
         const response = greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
         this.say(response, 4);
-        
+
         // Pulse to acknowledge
         setTimeout(() => this.pulse(), 100 + Math.random() * 300);
-        
+
         // Increase familiarity
         this.playerFamiliarity = Math.min(1, this.playerFamiliarity + 0.1);
       }
@@ -1918,14 +1930,14 @@ export class AIAgent implements IAIAgent {
       this.stateTimer = 5;
       this.pulsePhase = 0;
       this.sayContextual('excited', 'social');
-      
+
       // Increase player familiarity
       this.playerFamiliarity = Math.min(1, this.playerFamiliarity + 0.05);
     } else if (sadScore > 0) {
       this.triggerEmotion('social', 0.7, 20, 'someone needs comfort');
       this.state = 'seeking';
       this.targetRadius = 100;
-      
+
       // Helper personality responds more strongly
       if (this.personality.type === 'helper' || this.personality.type === 'guardian') {
         this.say('I\'m here for you 💫', 4);
@@ -1943,7 +1955,7 @@ export class AIAgent implements IAIAgent {
         this.sayContextual('curious', 'questioning');
       }
     }
-    
+
     // Add memory of interaction
     this.addMemory({
       type: 'interaction',
@@ -1964,27 +1976,27 @@ export class AIAgent implements IAIAgent {
 
     // Distance-based response delay (wave effect)
     const responseDelay = dist / 2;
-    
+
     // Personality affects response probability
     const responseProbability = this.personalityConfig.chatFrequency + (this.emotion.current === 'social' ? 0.3 : 0);
-    
+
     if (type === 'pulse') {
       // React based on personality and relationship
       if (Math.random() < responseProbability) {
         setTimeout(() => {
           this.pulse();
-          
+
           // Emotional reaction
           this.triggerEmotion('social', 0.4, 8, 'received pulse');
-          
+
           // Sometimes respond verbally
           if (Math.random() < this.personalityConfig.chatFrequency) {
             this.sayContextual('reactions', 'to_pulse');
           }
-          
+
           // Increase interest in source location
           this.attentionTarget = { x: sourceX, y: sourceY, type: 'pulse_source' };
-          
+
           // Maybe approach
           if (Math.random() < 0.3 && this.socialEnergy > 0.4) {
             this.setFollowTarget(sourceX, sourceY);
@@ -2008,7 +2020,7 @@ export class AIAgent implements IAIAgent {
         }, responseDelay);
       }
     }
-    
+
     // Add memory
     this.addMemory({
       type: 'interaction',
@@ -2033,12 +2045,12 @@ export class AIAgent implements IAIAgent {
    */
   collectFragment(): void {
     this.fragmentsCollected++;
-    
+
     // Radius growth
     this.targetRadius = Math.min(this.targetRadius + 0.5, 60);
     this.currentRadius = this.targetRadius;
     this.radius = this.targetRadius;
-    
+
     // Reduce fatigue slightly (collecting is rewarding)
     this.fatigueLevel = Math.max(0, this.fatigueLevel - 0.02);
   }
@@ -2070,7 +2082,7 @@ export class AIAgent implements IAIAgent {
         // Delayed response for natural feel
         setTimeout(() => {
           this.pulse();
-          
+
           // Emotional boost
           this.triggerEmotion('social', 0.4, 10, 'pulse exchange');
 
@@ -2101,7 +2113,7 @@ export class AIAgent implements IAIAgent {
   setHome(x: number, y: number): void {
     this.homeX = x;
     this.homeY = y;
-    
+
     // Add memory of home
     this.addMemory({
       type: 'location',
@@ -2144,10 +2156,10 @@ export class AIAgent implements IAIAgent {
    */
   getSocialStatus(): { energy: number; familiarity: number; friendCount: number } {
     const friendCount = Array.from(this.relationships.values()).filter(r => r.isFriend).length;
-    return { 
-      energy: this.socialEnergy, 
+    return {
+      energy: this.socialEnergy,
       familiarity: this.playerFamiliarity,
-      friendCount 
+      friendCount
     };
   }
 
@@ -2213,14 +2225,14 @@ export class AIAgent implements IAIAgent {
       data.realmId || 'genesis',
       data.personality as PersonalityType
     );
-    
+
     // Basic properties
     agent.id = data.id;
     agent.name = data.name;
     agent.fragmentsCollected = data.fragmentsCollected || 0;
     agent.homeX = data.homeX || data.x;
     agent.homeY = data.homeY || data.y;
-    
+
     // Advanced AI state restoration
     if (data.playerFamiliarity !== undefined) {
       agent.playerFamiliarity = data.playerFamiliarity;
@@ -2241,7 +2253,7 @@ export class AIAgent implements IAIAgent {
     if (data.timeSinceSpawn !== undefined) {
       agent.timeSinceSpawn = data.timeSinceSpawn;
     }
-    
+
     // Restore relationships
     if (data.relationships && Array.isArray(data.relationships)) {
       for (const rel of data.relationships) {
@@ -2256,12 +2268,12 @@ export class AIAgent implements IAIAgent {
         });
       }
     }
-    
+
     // Restore memories
     if (data.memories && Array.isArray(data.memories)) {
       agent.memories = data.memories;
     }
-    
+
     return agent;
   }
 }
