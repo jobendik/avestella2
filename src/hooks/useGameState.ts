@@ -1119,6 +1119,9 @@ export function useGameState(): UseGameStateReturn {
       });
     }, []),
     broadcastMessage: useCallback((text, x, y, radius = 500) => {
+      // Send to server for multiplayer broadcast
+      gameClient.sendChat(text);
+
       const state = gameState.current;
       if (!state) return;
 
