@@ -56,6 +56,8 @@ export class GameActionHandlers {
         try {
             const { intensity, color } = data;
 
+            console.log(`🟠 [SERVER GameAction] handlePulse from=${connection.playerId} realm=${connection.realm}`, { intensity, color });
+
             const now = Date.now();
 
             const pulse = {
@@ -78,6 +80,9 @@ export class GameActionHandlers {
             // Broadcast to nearby players
             if (connection.realm && ctx.realms.has(connection.realm)) {
                 const realm = ctx.realms.get(connection.realm)!;
+                let broadcastCount = 0;
+                console.log(`🟠 [SERVER GameAction] Checking broadcast for pulse in realm=${connection.realm} (total players: ${realm.size})`);
+
                 for (const conn of realm.values()) {
                     const dx = conn.x - connection.x;
                     const dy = conn.y - connection.y;
@@ -85,9 +90,14 @@ export class GameActionHandlers {
 
                     // Only send to players within pulse range
                     if (distance < 300) {
+                        // console.log(`🟠 [SERVER GameAction] Sending pulse to ${conn.playerId} (dist=${Math.round(distance)})`);
                         ctx.send(conn.ws, pulse);
+                        broadcastCount++;
                     }
                 }
+                console.log(`🟠 [SERVER GameAction] Pulse broadcast to ${broadcastCount} nearby players`);
+            } else {
+                console.log(`🟠 [SERVER GameAction] NO REALM FOUND for ${connection.realm}`);
             }
         } catch (error) {
             console.error('Failed to handle pulse:', error);

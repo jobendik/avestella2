@@ -458,11 +458,16 @@ export function useGameState(): UseGameStateReturn {
 
     // Listen for chat messages from other players
     const handleChatMessage = (data: any) => {
-      if (!data || data.playerId === playerId) return;
+      console.log(`🟡 [useGameState] handleChatMessage RECEIVED`, { data, myPlayerId: playerId });
+      if (!data || data.playerId === playerId) {
+        console.log(`🟡 [useGameState] handleChatMessage SKIPPED (self or no data)`);
+        return;
+      }
       const state = gameState.current;
 
       // Find the agent and set their currentMessage
       const agent = state.aiAgents.find(a => a.id === data.playerId);
+      console.log(`🟡 [useGameState] handleChatMessage agent found:`, agent?.id, agent?.name);
       if (agent) {
         agent.currentMessage = data.message;
 
@@ -491,7 +496,11 @@ export function useGameState(): UseGameStateReturn {
 
     // Listen for pulse events from other players
     const handlePulse = (data: any) => {
-      if (!data || data.playerId === playerId) return;
+      console.log(`🟡 [useGameState] handlePulse RECEIVED`, { data, myPlayerId: playerId });
+      if (!data || data.playerId === playerId) {
+        console.log(`🟡 [useGameState] handlePulse SKIPPED (self or no data)`);
+        return;
+      }
       const state = gameState.current;
 
       const pulseColor = data.color || '#87CEEB';

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AURA — The Social Cosmos</title>
+    
+    <!-- Favicon & Thumbnail -->
+    <link rel="icon" type="image/png" href="/thumbnail.png">
+    <link rel="apple-touch-icon" href="/thumbnail.png">
+    <meta property="og:image" content="/thumbnail.png">
+    <meta property="og:title" content="AURA — The Social Cosmos">
+    <meta property="og:description" content="Drift through an infinite cosmos of connection. Speak across the void. Form constellations with kindred souls.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="/thumbnail.png">
+    
+    <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+    <div id="loading">
+        <h1>AURA</h1>
+        <div id="loading-sub">The Social Cosmos</div>
+        <div id="loading-features">
+            <div class="feat"><div class="feat-icon">🌌</div><div class="feat-text">Infinite Space</div></div>
+            <div class="feat"><div class="feat-icon">🎙️</div><div class="feat-text">Spatial Voice</div></div>
+            <div class="feat"><div class="feat-icon">✨</div><div class="feat-text">Evolve & Create</div></div>
+        </div>
+        <p>Drift through an infinite cosmos of connection.<br>Speak across the void. Form constellations with kindred souls.<br>Leave echoes that ripple through eternity.</p>
+        <input type="text" id="name-input" placeholder="Choose your name..." maxlength="20" autocomplete="off">
+        <button id="start">Enter the Cosmos</button>
+    </div>
+    
+    <div id="onboard">
+        <div class="ob-card">
+            <div class="ob-icon">🌟</div>
+            <div class="ob-title">Welcome to the Cosmos</div>
+            <p class="ob-text">You are now a spark in an infinite universe.<br>Move to drift through space. Connect with others to grow stronger.</p>
+            <div class="ob-keys">
+                <div class="ob-key"><span>💬</span> Whisper</div>
+                <div class="ob-key"><span>🎵</span> Sing</div>
+                <div class="ob-key"><span>✨</span> Pulse</div>
+                <div class="ob-key"><span>⭐</span> Echo</div>
+            </div>
+            <button class="ob-btn" id="ob-go">Begin Journey</button>
+        </div>
+    </div>
+    
+    <div id="realm-trans">
+        <div style="text-align:center">
+            <div class="trans-icon" id="trans-icon">🌌</div>
+            <div class="trans-name" id="trans-name">Genesis</div>
+        </div>
+    </div>
+    
+    <div id="cursor"></div>
+    <canvas id="cosmos"></canvas>
+    
+    <!-- Hint Pill - Onboarding (inspiration4) -->
+    <div id="hint-pill">You are not alone. Drift to find others.</div>
+    
+    <!-- Invite Toast (inspiration4) -->
+    <div id="invite-toast">Orbit link copied to clipboard!</div>
+    
+    <!-- Hover Tooltip (quick preview on hover) -->
+    <div id="hover-tooltip">
+        <div class="ht-dot" id="ht-dot"></div>
+        <span id="ht-name">User</span>
+        <span id="ht-level">Lv 1</span>
+    </div>
+    
+    <!-- Click Profile Card (inspiration4 style - appears on click) -->
+    <div id="click-profile-card">
+        <div class="cpc-header">
+            <div class="cpc-dot" id="cpc-dot"></div>
+            <div class="cpc-name" id="cpc-name">User</div>
+            <div class="cpc-level" id="cpc-level">Lv 1</div>
+        </div>
+        <div class="cpc-stat"><span>Age</span><span class="cpc-val" id="cpc-age">0m</span></div>
+        <div class="cpc-stat"><span>Stars</span><span class="cpc-val" id="cpc-stars">0</span></div>
+        <div class="cpc-stat"><span>Bond</span><span class="cpc-val" id="cpc-bond">0%</span></div>
+        <div class="cpc-stat"><span>XP</span><span class="cpc-val" id="cpc-xp">0</span></div>
+        <div class="cpc-actions">
+            <button class="cpc-btn" id="cpc-whisper">💬 Whisper</button>
+            <button class="cpc-btn" id="cpc-friend">⭐ Add Friend</button>
+        </div>
+        <button class="cpc-btn primary" id="cpc-invite">🔗 Invite to Orbit</button>
+    </div>
+    
+    <div id="ui">
+        <div id="top">
+            <div id="logo-area">
+                <div id="logo">AURA</div>
+                <div id="realm-pill"><span id="realm-icon">🌌</span><span id="realm-text">Genesis</span></div>
+            </div>
+            <div id="top-right">
+                <!-- Snapshot button (insp.html inspired) -->
+                <button class="top-btn" id="btn-snapshot" title="Take Snapshot">📷</button>
+                <div id="voice-ctrl">
+                    <button id="voice-btn" title="Toggle Voice (V)">🔇</button>
+                    <button id="ptt-btn" title="Push to Talk (Hold Space)" style="display:none;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid var(--glass-border);color:var(--text-dim);font-size:0.7rem;cursor:pointer">PTT</button>
+                    <div id="voice-viz">
+                        <div class="vbar" style="height:4px"></div>
+                        <div class="vbar" style="height:6px"></div>
+                        <div class="vbar" style="height:10px"></div>
+                        <div class="vbar" style="height:6px"></div>
+                        <div class="vbar" style="height:4px"></div>
+                    </div>
+                    <span id="voice-status">Off</span>
+                </div>
+                <div id="identity">
+                    <div id="my-orb"><div id="my-orb-ring"></div></div>
+                    <div id="my-info">
+                        <div id="my-name">Wanderer</div>
+                        <div id="my-title">Spark • Lv 1</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="stats">
+            <div class="stat">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-info">
+                    <div class="stat-label">Experience</div>
+                    <div class="stat-val" id="xp-val">0 / 100</div>
+                    <div class="stat-bar"><div class="stat-fill" id="xp-fill" style="width:0%"></div></div>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-icon">🔗</div>
+                <div class="stat-info">
+                    <div class="stat-label">Linked Souls</div>
+                    <div class="stat-val" id="conn-val">0</div>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-info">
+                    <div class="stat-label">Stars Lit</div>
+                    <div class="stat-val" id="star-val">0</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="realms">
+            <div class="realm active" data-realm="genesis">🌌<div class="realm-tip">Genesis<div class="realm-tip-sub">The birthplace</div></div></div>
+            <div class="realm" data-realm="nebula">🌸<div class="realm-tip">Nebula Gardens<div class="realm-tip-sub">Where echoes bloom</div></div></div>
+            <div class="realm" data-realm="void">🌑<div class="realm-tip">The Void<div class="realm-tip-sub">Embrace darkness</div></div></div>
+            <div class="realm locked" data-realm="tagarena">⚡<div class="realm-tip">Tag Arena<div class="realm-tip-sub">Unlock at Lv 3</div></div></div>
+            <div class="realm locked" data-realm="starforge">🔥<div class="realm-tip">Starforge<div class="realm-tip-sub">Unlock at Lv 5</div></div></div>
+            <div class="realm locked" data-realm="abyss">🕳️<div class="realm-tip">The Abyss<div class="realm-tip-sub">Unlock at Lv 7</div></div></div>
+            <div class="realm locked" data-realm="crystal">💎<div class="realm-tip">Crystal Caverns<div class="realm-tip-sub">Unlock at Lv 8</div></div></div>
+            <div class="realm locked" data-realm="sanctuary">🏛️<div class="realm-tip">Sanctuary<div class="realm-tip-sub">Unlock at Lv 10</div></div></div>
+            <div class="realm locked" data-realm="celestial">👑<div class="realm-tip">Celestial Throne<div class="realm-tip-sub">Unlock at Lv 11</div></div></div>
+        </div>
+        
+        <div id="quick">
+            <div class="quick-btn" id="btn-quests"><div class="quick-tip">Quests</div>📋</div>
+            <div class="quick-btn" id="btn-achievements"><div class="quick-tip">Achievements</div>🏆</div>
+            <div class="quick-btn" id="btn-settings"><div class="quick-tip">Settings</div>⚙️</div>
+        </div>
+        
+        <div id="hint">Move to drift • Click souls to connect • V for voice</div>
+        
+        <div id="msg-box">
+            <div id="msg-target"></div>
+            <input type="text" id="msg-input" placeholder="Whisper into the void..." maxlength="100" autocomplete="off">
+            <div id="msg-hint">Enter to send • Escape to cancel</div>
+        </div>
+        
+        <div id="actions">
+            <button class="action" id="btn-social">👥<div class="action-tip">Nearby</div><span class="action-key">Tab</span></button>
+            <div class="divider"></div>
+            <button class="action" id="btn-whisper">💬<div class="action-tip">Whisper</div><span class="action-key">W</span></button>
+            <button class="action primary" id="btn-sing">🎵<div class="action-tip">Sing</div><span class="action-key">S</span></button>
+            <button class="action" id="btn-pulse">✨<div class="action-tip">Pulse</div><span class="action-key">P</span></button>
+            <button class="action" id="btn-echo">⭐<div class="action-tip">Echo</div><span class="action-key">E</span></button>
+            <div class="divider"></div>
+            <button class="action" id="btn-emote">😊<div class="action-tip">Emote</div><span class="action-key">Q</span></button>
+        </div>
+        
+        <div id="minimap">
+            <canvas id="mm-canvas"></canvas>
+            <div id="mm-label">Local Space</div>
+        </div>
+        
+        <!-- Social Panel -->
+        <div class="panel" id="social">
+            <div class="panel-head">
+                <div class="panel-title">Cosmos</div>
+                <button class="panel-close" data-close="social">×</button>
+            </div>
+            <div class="panel-tabs">
+                <button class="panel-tab active" data-tab="nearby">Nearby</button>
+                <button class="panel-tab" data-tab="friends">Friends</button>
+                <button class="panel-tab" data-tab="recent">Recent</button>
+            </div>
+            <div class="panel-body" id="nearby-list"></div>
+        </div>
+        
+        <!-- Achievements Panel -->
+        <div class="panel" id="achievements">
+            <div class="ach-header">
+                <div class="ach-title">Achievements</div>
+                <div class="ach-progress"><span id="ach-count">0</span> / <span id="ach-total">24</span></div>
+                <button class="panel-close" data-close="achievements">×</button>
+            </div>
+            <div class="ach-tabs">
+                <button class="ach-tab active" data-ach-tab="all">All</button>
+                <button class="ach-tab" data-ach-tab="social">Social</button>
+                <button class="ach-tab" data-ach-tab="explore">Explore</button>
+                <button class="ach-tab" data-ach-tab="secret">Secret</button>
+            </div>
+            <div class="ach-grid" id="ach-grid"></div>
+        </div>
+        
+        <!-- Settings Panel -->
+        <div class="panel" id="settings">
+            <div class="panel-head">
+                <div class="panel-title">Settings</div>
+                <button class="panel-close" data-close="settings">×</button>
+            </div>
+            <div class="settings-section">
+                <div class="settings-title">Audio</div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Music</div><div class="setting-desc">Ambient drone & sounds</div></div>
+                    <div class="toggle on" data-setting="music"><div class="toggle-knob"></div></div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">Volume</div>
+                    <div class="slider-row">
+                        <div class="slider" data-setting="volume"><div class="slider-fill" style="width:70%"></div></div>
+                        <div class="slider-val">70%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-title">Appearance</div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Aura Color</div></div>
+                </div>
+                <div class="color-picker" id="color-picker"></div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-title">Effects</div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Particles</div><div class="setting-desc">Visual particle effects</div></div>
+                    <div class="toggle on" data-setting="particles"><div class="toggle-knob"></div></div>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Screen Shake</div><div class="setting-desc">Camera shake effects</div></div>
+                    <div class="toggle on" data-setting="shake"><div class="toggle-knob"></div></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quests Panel -->
+        <div class="panel" id="quests">
+            <div class="panel-head">
+                <div class="panel-title">Quests</div>
+                <button class="panel-close" data-close="quests">×</button>
+            </div>
+            <div class="panel-tabs">
+                <button class="panel-tab active" data-tab="daily">Daily</button>
+                <button class="panel-tab" data-tab="weekly">Weekly</button>
+            </div>
+            <div class="panel-body">
+                <div id="daily-quest-list"></div>
+                <div id="weekly-quest-list" style="display:none"></div>
+                <div id="weekly-reset-timer" style="display:none;text-align:center;margin-top:10px;color:var(--text-dim);font-size:0.75rem"></div>
+            </div>
+        </div>
+        
+        <!-- Profile Card -->
+        <div id="profile">
+            <div class="prof-banner"><div class="prof-banner-bg" id="prof-banner"></div>
+                <div class="prof-avatar-wrap"><div class="prof-avatar"><div class="prof-avatar-inner" id="prof-avatar"></div></div></div>
+            </div>
+            <div class="prof-content">
+                <div class="prof-header">
+                    <div><div class="prof-name" id="prof-name">Unknown</div><div class="prof-title" id="prof-title">Spark • Lv 1</div></div>
+                    <div class="prof-voice" id="prof-voice"><span>🔇</span> Silent</div>
+                </div>
+                <div class="prof-stats">
+                    <div class="prof-stat"><div class="prof-stat-val" id="prof-stars">0</div><div class="prof-stat-label">Stars</div></div>
+                    <div class="prof-stat"><div class="prof-stat-val" id="prof-echoes">0</div><div class="prof-stat-label">Echoes</div></div>
+                    <div class="prof-stat"><div class="prof-stat-val" id="prof-age">0h</div><div class="prof-stat-label">Age</div></div>
+                </div>
+                <div class="prof-bond">
+                    <div class="prof-bond-head"><span>Connection</span><span id="prof-bond-val">0%</span></div>
+                    <div class="prof-bond-bar"><div class="prof-bond-fill" id="prof-bond-fill"></div></div>
+                </div>
+                <div class="prof-actions">
+                    <button class="prof-btn" id="prof-whisper">💬 Whisper</button>
+                    <button class="prof-btn" id="prof-friend">❤️ Add Friend</button>
+                    <button class="prof-btn primary" id="prof-follow">Follow</button>
+                </div>
+                <div class="prof-actions" style="margin-top:8px">
+                    <button class="prof-btn secondary" id="prof-teleport" style="display:none">🌀 Teleport To</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Emote Wheel -->
+        <div id="emotes"></div>
+        
+        <!-- Quick Reactions Bar (insp.html inspired) -->
+        <div id="quick-reactions">
+            <button class="react-btn" data-emoji="❤️">❤️</button>
+            <button class="react-btn" data-emoji="🔥">🔥</button>
+            <button class="react-btn" data-emoji="✨">✨</button>
+            <button class="react-btn" data-emoji="👋">👋</button>
+            <button class="react-btn" data-emoji="😊">😊</button>
+        </div>
+        
+        <!-- Quick Chat (Inspiration from inspiration4.html) -->
+        <div id="quick-chat-wrapper">
+            <input type="text" id="quick-chat" placeholder="Press Enter to chat..." maxlength="60" autocomplete="off">
+        </div>
+        
+        <!-- Boost Indicator (insp.html inspired) -->
+        <div id="boost-indicator">
+            <div id="boost-icon">⚡</div>
+            <div id="boost-text">SPEED BOOST</div>
+            <div id="boost-bar"><div id="boost-fill"></div></div>
+        </div>
+        
+        <!-- Tag Game HUD (insp.html inspired) -->
+        <div id="tag-hud">
+            <div id="tag-status">
+                <span id="tag-icon">⚡</span>
+                <span id="tag-text">SURVIVE!</span>
+            </div>
+            <div id="tag-timer">
+                <div id="tag-timer-label">Survival Time</div>
+                <div id="tag-timer-val">0.0s</div>
+            </div>
+        </div>
+        
+        <!-- Social Network HUD (shows when in cluster) -->
+        <div id="cluster-hud">
+            <div id="cluster-count">0</div>
+            <div id="cluster-label">Souls nearby</div>
+        </div>
+        
+        <!-- Signal Strength HUD (inspiration3) -->
+        <div id="signal-hud">
+            <div id="signal-icon">📡</div>
+            <div id="signal-val">100%</div>
+        </div>
+        
+        <!-- Toasts -->
+        <div id="toasts"></div>
+        
+        <!-- Snapshot Modal (insp.html inspired) -->
+        <div id="snapshot-modal">
+            <img id="snapshot-img" alt="Snapshot">
+            <div id="snapshot-actions">
+                <button class="snapshot-btn" id="snapshot-download">💾 Download</button>
+                <button class="snapshot-btn secondary" id="snapshot-close">✕ Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

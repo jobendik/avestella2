@@ -1,0 +1,17 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp, addDoc } from 'firebase/firestore';
+import { Share2, MessageCircle, X, Send, Sparkles, Users, Zap, Heart, Sun, Wind } from 'lucide-react';
+import { auth, db, APP_ID } from './config/firebase';
+import { 
+  WORLD_SIZE, LIGHT_MIN_RADIUS, LIGHT_MAX_RADIUS, COLD_ONSET_DELAY, 
+  TETHER_MAX_DIST, TETHER_STRENGTH, TETHER_SNAP_TIME, WARMTH_LINGER_FRAMES, 
+  WARMTH_GRANT_FLOOR, IDLE_BREATH_THRESHOLD, CROWDING_DISTANCE, 
+  OPTIMAL_DISTANCE, MAX_CONNECTION_DIST, FRAGMENT_COLLECT_RADIUS, 
+  FRAGMENT_SPAWN_RATE, BEACON_ACTIVATION_FRAMES, PRESENCE_HEARTBEAT_MS, 
+  CHAT_BUBBLE_DURATION, AI_COUNT, BOND_GROW_RATE, BOND_DECAY_RATE, BEACONS 
+} from './config/constants';
+import { AudioEngine } from './engine/AudioEngine';
+import { Particle, Ripple, Shockwave } from './engine/Visuals';
+import { AIAgent, getRandomName } from './engine/AIAgent';
+import { vibrate, hexToRgb, drawRoundedRect } from './utils/helpers';

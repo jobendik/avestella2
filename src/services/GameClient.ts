@@ -148,6 +148,7 @@ class GameClient extends EventEmitter {
     }
 
     public sendAction(type: 'sing' | 'pulse' | 'emote', data: any) {
+        console.log(`🔵 [GameClient] sendAction type=${type}`, { playerId: this.playerId, realm: this.realm, data });
         this.send(type, {
             ...data,
             playerId: this.playerId,
@@ -156,6 +157,7 @@ class GameClient extends EventEmitter {
     }
 
     public sendChat(text: string) {
+        console.log(`🔵 [GameClient] sendChat text="${text}"`, { playerId: this.playerId, realm: this.realm });
         this.send('chat', {
             message: text,
             playerId: this.playerId,
@@ -877,6 +879,18 @@ class GameClient extends EventEmitter {
     }
 
     private handleMessage(msg: WebSocketMessage) {
+        // DEBUG: Log all incoming messages except ping/pong and frequent world_state
+        if (msg.type !== 'pong' && msg.type !== 'world_state') {
+            console.log(`🟢 [GameClient] RECEIVED type=${msg.type}`, msg.data);
+        }
+        // DEBUG: Log chat_message and pulse specifically
+        if (msg.type === 'chat_message') {
+            console.log(`🟢 [GameClient] CHAT_MESSAGE from=${msg.data?.playerId}`, msg.data);
+        }
+        if (msg.type === 'pulse') {
+            console.log(`🟢 [GameClient] PULSE from=${msg.data?.playerId}`, msg.data);
+        }
+
         // Handle pong response for latency calculation
         if (msg.type === 'pong') {
             if (this.lastPingTime > 0) {
