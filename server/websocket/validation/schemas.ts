@@ -394,11 +394,7 @@ export const acknowledgeSignalSchema = z.object({
 // EXPLORATION SCHEMAS
 // =============================================================================
 
-export const updateExplorationSchema = z.object({
-    x: coordinate,
-    y: coordinate,
-    realm: realm.optional()
-});
+
 
 export const discoverPoiSchema = z.object({
     poiId: idField,

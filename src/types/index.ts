@@ -1183,6 +1183,8 @@ export interface PlayerExploration {
   totalDistance: number;
   explorationPercent: number;
   discoveries: { id: string; type: string; timestamp: number }[];
+  x?: number;
+  y?: number;
 }
 
 export interface PlayerQuests {
