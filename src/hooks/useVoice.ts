@@ -96,13 +96,20 @@ export function useVoice(
 
         const eligiblePeers = new Set<string>();
 
+        console.log('🎤 [useVoice] checkConnections running. activeBonds:', activeBondsRef.current.length, activeBondsRef.current);
+
         activeBondsRef.current.forEach(bond => {
-            // Logic: Connect if bond strength is high enough
-            // Using 0.5 as threshold for now, similar to previous logic
-            if (bond.strength >= 0.5 && !bond.targetId.startsWith('agent_')) {
+            // Logic: Connect to all real players (remove bond threshold for now to fix "no voice" issue)
+            if (!bond.targetId.startsWith('agent_')) {
                 eligiblePeers.add(bond.targetId);
             }
         });
+
+        // Also add any nearby players from gameClient if available (to ensure we catch non-bonded strangers)
+        // For now, let's assume the component using this hook passes all relevant "bonds" or we need a way to get nearby entities.
+        // Since useVoice depends on activeBonds, we interpret "strangers" as "bonds with 0 strength" if the game creates them.
+        // If the game DOESNT create bonds for strangers, we are missing them.
+        // But for this fix, we are removing the 0.5 limit.
 
         voiceService.updateNearbyPeers(eligiblePeers);
     }, []);

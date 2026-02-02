@@ -122,8 +122,13 @@ export const chatSchema = z.object({
 
 export const whisperSchema = z.object({
     targetId: playerId,
-    message: z.string().min(1).max(500)
-});
+    // Accept both 'message' and 'text' since client sends 'text'
+    message: z.string().min(1).max(500).optional(),
+    text: z.string().min(1).max(500).optional()
+}).transform(data => ({
+    targetId: data.targetId,
+    message: data.message || data.text || ''
+}));
 
 export const emojiReactionSchema = z.object({
     targetId: playerId.optional(),
@@ -141,10 +146,17 @@ export const typingIndicatorSchema = z.object({
 // =============================================================================
 
 export const challengeProgressSchema = z.object({
-    challengeId: idField,
-    progress: z.number().int().min(0).max(1000000),
+    // Accept both old and new field names
+    challengeId: idField.optional(),
+    type: z.string().min(1).max(64).optional(),
+    progress: z.number().int().min(0).max(1000000).optional(),
+    amount: z.number().int().min(0).max(1000000).optional(),
     action: z.string().min(1).max(64).optional()
-});
+}).transform(data => ({
+    challengeId: data.challengeId || data.type || '',
+    progress: data.progress ?? data.amount ?? 0,
+    action: data.action
+}));
 
 export const claimDailyRewardSchema = z.object({
     day: z.number().int().min(1).max(365).optional()
@@ -160,9 +172,16 @@ export const claimSeasonRewardSchema = z.object({
 });
 
 export const purchaseCosmeticSchema = z.object({
-    cosmeticId: idField,
+    // Accept both 'cosmeticId' and 'id' since client sends 'id'
+    cosmeticId: idField.optional(),
+    id: idField.optional(),
+    price: z.number().int().min(0).optional(),
     currency: z.enum(['stars', 'echoes', 'premium']).optional()
-});
+}).transform(data => ({
+    cosmeticId: data.cosmeticId || data.id || '',
+    price: data.price,
+    currency: data.currency
+}));
 
 export const equipCosmeticSchema = z.object({
     cosmeticId: idField,
@@ -503,10 +522,16 @@ export const guildContributeSchema = z.object({
 // =============================================================================
 
 export const sendGiftSchema = z.object({
-    recipientId: playerId,
-    giftType: z.enum(['daily', 'special', 'celebration', 'appreciation']).optional(),
+    // Accept both 'recipientId' and 'toPlayerId' since client sends 'toPlayerId'
+    recipientId: playerId.optional(),
+    toPlayerId: playerId.optional(),
+    giftType: z.string().max(50).optional(),
     message: z.string().max(200).optional()
-});
+}).transform(data => ({
+    recipientId: data.recipientId || data.toPlayerId || '',
+    giftType: data.giftType,
+    message: data.message
+}));
 
 export const claimGiftSchema = z.object({
     giftId: idField
@@ -517,7 +542,8 @@ export const claimGiftSchema = z.object({
 // =============================================================================
 
 export const voiceSignalSchema = z.object({
-    targetId: playerId.optional(),
+    targetId: playerId,
+    signalType: z.enum(['offer', 'answer', 'ice']),
     signal: z.record(z.unknown())
 });
 
@@ -526,8 +552,12 @@ export const voiceJoinRoomSchema = z.object({
 });
 
 export const voiceMuteSchema = z.object({
-    muted: z.boolean()
-});
+    // Accept both 'muted' and 'isMuted'
+    muted: z.boolean().optional(),
+    isMuted: z.boolean().optional()
+}).transform(data => ({
+    isMuted: data.isMuted ?? data.muted ?? false
+}));
 
 export const voiceSpeakingSchema = z.object({
     speaking: z.boolean()
@@ -676,8 +706,61 @@ export const snapshotTakenSchema = z.object({
     x: coordinate,
     y: coordinate,
     realm: realm.optional(),
+    // Accept both field names for backward compatibility
     playersInFrame: z.array(playerId).max(50).optional(),
+    visiblePlayers: z.array(playerId).max(50).optional(),
+    visibleEntities: z.array(idField).max(50).optional(),
+    caption: z.string().max(200).optional(),
     timestamp: timestamp.optional()
+}).transform(data => ({
+    ...data,
+    playersInFrame: data.playersInFrame || data.visiblePlayers || []
+}));
+
+// =============================================================================
+// MISSING SCHEMAS - Added for GameClient methods
+// =============================================================================
+
+export const addFriendSchema = z.object({
+    friendId: playerId,
+    friendName: z.string().max(50).optional()
+});
+
+export const removeFriendSchema = z.object({
+    friendId: playerId
+});
+
+export const trackStatSchema = z.object({
+    stat: z.string().min(1).max(64),
+    amount: z.number().int().default(1)
+});
+
+export const addAchievementSchema = z.object({
+    achievementId: idField
+});
+
+export const lightBeaconSchema = z.object({
+    beaconId: idField
+});
+
+export const rerollChallengeSchema = z.object({
+    challengeId: idField
+});
+
+export const updateEventProgressSchema = z.object({
+    type: z.enum(['fragment', 'beacon', 'bond']),
+    amount: z.number().int().min(1).default(1)
+});
+
+export const updateCosmeticsSchema = z.object({
+    cosmetics: z.record(z.unknown())
+});
+
+export const updateQuestSchema = z.object({
+    questId: idField.optional(),
+    progress: z.number().int().min(0).optional(),
+    completed: z.boolean().optional(),
+    questData: z.record(z.unknown()).optional()
 });
 
 // =============================================================================
@@ -713,14 +796,21 @@ export const messageSchemas: Record<string, z.ZodSchema> = {
     'claim_season_reward': claimSeasonRewardSchema,
     'purchase_cosmetic': purchaseCosmeticSchema,
     'equip_cosmetic': equipCosmeticSchema,
+    'reroll_challenge': rerollChallengeSchema,
+    'update_event_progress': updateEventProgressSchema,
+    'track_stat': trackStatSchema,
+    'add_achievement': addAchievementSchema,
 
     // Player data
     'sync_player_data': syncPlayerDataSchema,
     'friend_request': friendRequestSchema,
+    'add_friend': addFriendSchema,
     'accept_friend': friendResponseSchema,
     'decline_friend': friendResponseSchema,
-    'remove_friend': friendResponseSchema,
+    'remove_friend': removeFriendSchema,
     'teleport_to_friend': teleportToFriendSchema,
+    'update_cosmetics': updateCosmeticsSchema,
+    'update_quest': updateQuestSchema,
 
     // Map markers
     'place_map_marker': placeMapMarkerSchema,
@@ -737,6 +827,7 @@ export const messageSchemas: Record<string, z.ZodSchema> = {
     'contribute_event': contributeEventSchema,
     'claim_event_reward': claimEventRewardSchema,
     'fight_darkness': fightDarknessSchema,
+    'light_beacon': lightBeaconSchema,
 
     // Power-ups
     'collect_power_up': collectPowerUpSchema,
@@ -807,6 +898,7 @@ export const messageSchemas: Record<string, z.ZodSchema> = {
     'voice_join_room': voiceJoinRoomSchema,
     'voice_mute': voiceMuteSchema,
     'voice_speaking': voiceSpeakingSchema,
+    'speaking': voiceSpeakingSchema,
 
     // Bonds
     'get_bond': getBondSchema,
@@ -931,7 +1023,8 @@ export const noDataRequiredMessages = new Set([
     'get_mentor_list',
     'get_activity_feed',
     'get_unread_count',
-    'get_leaderboard_types'
+    'get_leaderboard_types',
+    'daily_login'
 ]);
 
 /**

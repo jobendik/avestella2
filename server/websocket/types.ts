@@ -45,6 +45,9 @@ export interface PlayerConnection {
     lastChatTime?: number;
     mutedPlayers?: Set<string>;
 
+    // Voice Chat
+    voiceRoom?: string;
+
     // Anchoring/Mindfulness
     currentAnchoringZone?: string;
     anchoringStartTime?: number;

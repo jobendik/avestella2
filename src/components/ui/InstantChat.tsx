@@ -95,6 +95,11 @@ export function InstantChat(): JSX.Element {
     // Grant XP
     progression.addXP(MESSAGE_XP_REWARD);
 
+    // Broadcast message to other players
+    if (gameState.broadcastMessage) {
+      gameState.broadcastMessage(text, playerX, playerY);
+    }
+
     // Play sound (using collect as chat sound)
     try {
       audio.play('collect');
@@ -123,13 +128,13 @@ export function InstantChat(): JSX.Element {
 
   return (
     <div className="fixed bottom-36 left-1/2 transform -translate-x-1/2 z-40 pointer-events-auto">
-      <div 
+      <div
         className={`
           flex items-center justify-center
           bg-black/60 backdrop-blur-xl rounded-full 
           border transition-all duration-200 cursor-text
-          ${isActive 
-            ? 'border-purple-500/50 bg-black/80 px-4 py-2 w-80' 
+          ${isActive
+            ? 'border-purple-500/50 bg-black/80 px-4 py-2 w-80'
             : 'border-white/10 hover:border-white/20 px-6 py-2.5 w-64'
           }
         `}

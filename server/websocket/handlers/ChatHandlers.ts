@@ -66,12 +66,15 @@ export class ChatHandlers {
             if (connection.realm && ctx.realms.has(connection.realm)) {
                 const realm = ctx.realms.get(connection.realm)!;
                 console.log(`🟠 [SERVER ChatHandler] Broadcasting to ${realm.size} players in realm=${connection.realm}`);
+                let sentCount = 0;
                 for (const conn of Array.from(realm.values())) {
-                    console.log(`🟠 [SERVER ChatHandler] Sending to playerId=${conn.playerId}`);
+                    // console.log(`🟠 [SERVER ChatHandler] Sending to playerId=${conn.playerId}`); // Too verbose for large realms
                     ctx.send(conn.ws, chatMessage);
+                    sentCount++;
                 }
+                console.log(`🟠 [SERVER ChatHandler] Successfully sent to ${sentCount} clients`);
             } else {
-                console.log(`🟠 [SERVER ChatHandler] NO REALM FOUND for ${connection.realm}`);
+                console.warn(`🟠 [SERVER ChatHandler] BROADCAST FAILED: Realm '${connection.realm}' not found in realm map. Available realms: ${Array.from(ctx.realms.keys()).join(', ')}`);
             }
         } catch (error) {
             console.error('Failed to handle chat message:', error);

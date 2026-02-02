@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSocialContext, useGameStateContext } from '@/contexts/GameContext';
+import { gameClient } from '@/services/GameClient';
 
 export function ChatInterface(): JSX.Element | null {
     const { gameState, broadcastMessage } = useGameStateContext();
@@ -9,28 +10,35 @@ export function ChatInterface(): JSX.Element | null {
     const [message, setMessage] = useState('');
     const [chatHistory, setChatHistory] = useState<{ id: string, from: string, text: string, time: number }[]>([]);
 
-    // Simulation: Add random guild chat messages
+    // Listen for incoming messages
     useEffect(() => {
-        const timer = setInterval(() => {
-            if (Math.random() > 0.7) {
-                const names = ['StarSeeker', 'LunaGuardian', 'NovaKnight', 'CrystalWielder'];
-                const texts = [
-                    'Anyone near the north beacon?',
-                    'Just found a golden fragment!',
-                    'The constellation bonus is active!',
-                    'Who wants to join my bond group?',
-                    'Level 40 reached! 🎉'
-                ];
-                const newMsg = {
-                    id: `msg_${Date.now()} `,
-                    from: names[Math.floor(Math.random() * names.length)],
-                    text: texts[Math.floor(Math.random() * texts.length)],
-                    time: Date.now()
-                };
-                setChatHistory(prev => [...prev.slice(-19), newMsg]);
-            }
-        }, 5000);
-        return () => clearInterval(timer);
+        const handleChatMessage = (data: { playerId: string, playerName: string, message: string, channel: string, timestamp: number }) => {
+            const newMsg = {
+                id: `msg_${Date.now()}_${Math.random()}`,
+                from: data.playerName || 'Unknown',
+                text: data.message,
+                time: data.timestamp || Date.now()
+            };
+            setChatHistory(prev => [...prev.slice(-49), newMsg]);
+        };
+
+        const handleWhisper = (data: { fromId: string, fromName: string, message: string, timestamp: number }) => {
+            const newMsg = {
+                id: `msg_${Date.now()}_${Math.random()}`,
+                from: `${data.fromName} (Whisper)`,
+                text: data.message,
+                time: data.timestamp || Date.now()
+            };
+            setChatHistory(prev => [...prev.slice(-49), newMsg]);
+        };
+
+        gameClient.on('chat_message', handleChatMessage);
+        gameClient.on('whisper_received', handleWhisper);
+
+        return () => {
+            gameClient.off('chat_message', handleChatMessage);
+            gameClient.off('whisper_received', handleWhisper);
+        };
     }, []);
 
     if (!isOpen) {

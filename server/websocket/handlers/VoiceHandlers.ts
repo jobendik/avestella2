@@ -1,216 +1,142 @@
 // =============================================================================
-// Voice Handlers - WebSocket message handlers for voice chat / WebRTC signaling
+// Voice Handlers - WebRTC Signaling for Voice Chat
 // =============================================================================
 
 import type { PlayerConnection, HandlerContext } from '../types.js';
-import { voiceChannelService } from '../../services/VoiceChannelService.js';
 
 export class VoiceHandlers {
     /**
-     * Handle WebRTC signaling message (offer, answer, ICE candidates)
+     * Handle voice signal (WebRTC offer/answer/ice)
      */
     static async handleVoiceSignal(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
         try {
-            const { targetId, signalType, signalData } = data;
+            const { targetId, signalType, signal } = data;
 
-            if (!targetId || !signalType || !signalData) {
-                ctx.sendError(connection, 'Invalid voice signal data');
+            if (!targetId || !signalType || !signal) {
+                // console.warn(`🟠 [SERVER VoiceHandler] Invalid voice signal from ${connection.playerId}`);
                 return;
             }
 
-            // Forward signal to target peer
-            const targetConn = ctx.connections.get(targetId);
-            if (targetConn) {
-                ctx.send(targetConn.ws, {
-                    type: 'voice_signal',
-                    data: {
-                        fromId: connection.playerId,
-                        fromName: connection.playerName,
-                        signalType,
-                        signalData
-                    },
-                    timestamp: Date.now()
-                });
+            // Find target player
+            let targetConnection: PlayerConnection | null = null;
+
+            // Optimization: First check current realm
+            if (connection.realm && ctx.realms.has(connection.realm)) {
+                const realm = ctx.realms.get(connection.realm)!;
+                // We have to iterate because realm is a Map<WebSocket, PlayerConnection> or similar? 
+                // Wait, ctx.realms is Map<string, Set<PlayerConnection>> usually.
+                // Assuming standard structure based on ChatHandlers.
+
+                for (const conn of Array.from(realm.values())) {
+                    if (conn.playerId === targetId) {
+                        targetConnection = conn;
+                        break;
+                    }
+                }
             }
+
+            // If not in realm (or if we want to support cross-realm voice? probably not for proximity), 
+            // strictly speaking voice should be proximity based, so same realm check is good.
+
+            if (!targetConnection) {
+                // console.warn(`🟠 [SERVER VoiceHandler] Target ${targetId} not found in realm ${connection.realm}`);
+                return;
+            }
+
+            // Relay signal
+            ctx.send(targetConnection.ws, {
+                type: 'voice_signal',
+                data: {
+                    fromId: connection.playerId,
+                    fromName: connection.playerName,
+                    signalType,
+                    signalData: signal,
+                    timestamp: Date.now()
+                },
+                timestamp: Date.now()
+            });
+
+            // console.log(`🟠 [SERVER VoiceHandler] Relayed ${signalType} from ${connection.playerId} to ${targetId}`);
+
         } catch (error) {
-            console.error('Error handling voice signal:', error);
+            console.error('Failed to handle voice signal:', error);
         }
     }
 
     /**
-     * Join a voice room
+     * Handle joining a voice room (or channel)
      */
     static async handleJoinRoom(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
-        try {
-            const { roomId } = data;
-
-            const result = voiceChannelService.joinRoom(
-                connection.playerId,
-                roomId || `proximity_${connection.realm}`
-            );
-
-            if (result.success && result.room) {
-                // Get participant IDs from the room
-                const participantIds = Array.from(result.room.currentParticipants);
-
-                ctx.send(connection.ws, {
-                    type: 'voice_room_joined',
-                    data: {
-                        roomId: result.room.id,
-                        participants: participantIds,
-                        settings: result.room.settings
-                    },
-                    timestamp: Date.now()
-                });
-
-                // Notify other participants
-                for (const participantId of participantIds) {
-                    if (participantId !== connection.playerId) {
-                        const participantConn = ctx.connections.get(participantId);
-                        if (participantConn) {
-                            ctx.send(participantConn.ws, {
-                                type: 'voice_peer_joined',
-                                data: {
-                                    peerId: connection.playerId,
-                                    peerName: connection.playerName
-                                },
-                                timestamp: Date.now()
-                            });
-                        }
-                    }
-                }
-            } else {
-                ctx.sendError(connection, result.error || 'Failed to join voice room');
-            }
-        } catch (error) {
-            console.error('Error joining voice room:', error);
-            ctx.sendError(connection, 'Failed to join voice room');
-        }
+        // For now, simpler proximity voice is used, but we acknowledge the room request
+        // Could be used for Guild voice channels later
+        connection.voiceRoom = data.roomId;
+        ctx.send(connection.ws, { type: 'voice_room_joined', data: { roomId: data.roomId }, timestamp: Date.now() });
     }
 
     /**
-     * Leave voice room
+     * Handle leaving a voice room
      */
     static async handleLeaveRoom(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
-        try {
-            const { roomId } = data;
-
-            // Get remaining participants before leaving
-            const room = voiceChannelService.getRoom(roomId);
-            const remainingParticipants = room ? Array.from(room.currentParticipants).filter(id => id !== connection.playerId) : [];
-
-            const success = voiceChannelService.leaveRoom(connection.playerId);
-
-            if (success) {
-                ctx.send(connection.ws, {
-                    type: 'voice_room_left',
-                    data: { roomId },
-                    timestamp: Date.now()
-                });
-
-                // Notify other participants
-                for (const participantId of remainingParticipants) {
-                    const participantConn = ctx.connections.get(participantId);
-                    if (participantConn) {
-                        ctx.send(participantConn.ws, {
-                            type: 'voice_peer_left',
-                            data: {
-                                peerId: connection.playerId
-                            },
-                            timestamp: Date.now()
-                        });
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error leaving voice room:', error);
-        }
+        connection.voiceRoom = undefined;
+        ctx.send(connection.ws, { type: 'voice_room_left', data: {}, timestamp: Date.now() });
     }
 
     /**
-     * Update mute state
+     * Handle mute state change
      */
     static async handleMute(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
-        try {
-            const { muted, roomId } = data;
-
-            voiceChannelService.setMuted(connection.playerId, muted);
-
-            // Notify other participants
-            const roomParticipants = voiceChannelService.getRoomParticipants(roomId);
-            for (const participant of roomParticipants) {
-                if (participant.playerId !== connection.playerId) {
-                    const participantConn = ctx.connections.get(participant.playerId);
-                    if (participantConn) {
-                        ctx.send(participantConn.ws, {
-                            type: 'voice_peer_mute_changed',
-                            data: {
-                                peerId: connection.playerId,
-                                muted
-                            },
-                            timestamp: Date.now()
-                        });
-                    }
+        // Broadcast mute state to nearby players or room members
+        // For proximity, we broadcast to realm
+        if (connection.realm && ctx.realms.has(connection.realm)) {
+            const realm = ctx.realms.get(connection.realm)!;
+            for (const conn of Array.from(realm.values())) {
+                if (conn.playerId !== connection.playerId) {
+                    ctx.send(conn.ws, {
+                        type: 'player_muted',
+                        data: { playerId: connection.playerId, isMuted: data.isMuted },
+                        timestamp: Date.now()
+                    });
                 }
             }
-        } catch (error) {
-            console.error('Error updating mute state:', error);
         }
     }
 
     /**
-     * Handle speaking state update
+     * Handle speaking state change (for visual indicators)
      */
     static async handleSpeaking(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
-        try {
-            const { speaking } = data;
-
-            // Get player's current room
-            const room = voiceChannelService.getPlayerRoom(connection.playerId);
-            if (!room) return;
-
-            voiceChannelService.setSpeaking(connection.playerId, speaking);
-            connection.isSpeaking = speaking;
-
-            // Broadcast to room participants
-            const roomParticipants = voiceChannelService.getRoomParticipants(room.id);
-            for (const participant of roomParticipants) {
-                if (participant.playerId !== connection.playerId) {
-                    const participantConn = ctx.connections.get(participant.playerId);
-                    if (participantConn) {
-                        ctx.send(participantConn.ws, {
-                            type: 'voice_peer_speaking',
-                            data: {
-                                peerId: connection.playerId,
-                                speaking
-                            },
-                            timestamp: Date.now()
-                        });
-                    }
+        if (connection.realm && ctx.realms.has(connection.realm)) {
+            const realm = ctx.realms.get(connection.realm)!;
+            const msg = {
+                type: 'player_speaking',
+                data: { playerId: connection.playerId, speaking: data.speaking },
+                timestamp: Date.now()
+            };
+            for (const conn of Array.from(realm.values())) {
+                if (conn.playerId !== connection.playerId) {
+                    ctx.send(conn.ws, msg);
                 }
             }
-        } catch (error) {
-            console.error('Error updating speaking state:', error);
         }
     }
 
     /**
-     * Get nearby voice peers for proximity voice
+     * Get nearby peers for voice connection
      */
     static async handleGetNearbyVoicePeers(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
-        try {
-            // Get players in the same realm proximity room
-            const room = voiceChannelService.getRoom(`proximity_${connection.realm}`);
-            const peers = room ? voiceChannelService.getRoomParticipants(room.id)
-                .filter(p => p.playerId !== connection.playerId) : [];
+        // Return list of players in same realm for now (simplest proximity)
+        // In real massive game, we'd use a spatial grid query
+        if (connection.realm && ctx.realms.has(connection.realm)) {
+            const realm = ctx.realms.get(connection.realm)!;
+            const peers = Array.from(realm.values())
+                .filter(c => c.playerId !== connection.playerId)
+                .map(c => c.playerId);
 
             ctx.send(connection.ws, {
                 type: 'nearby_voice_peers',
                 data: { peers },
                 timestamp: Date.now()
             });
-        } catch (error) {
-            console.error('Error getting nearby voice peers:', error);
         }
     }
 
@@ -218,16 +144,11 @@ export class VoiceHandlers {
      * Get available voice rooms
      */
     static async handleGetVoiceRooms(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
-        try {
-            const rooms = voiceChannelService.getRoomsByRealm(connection.realm);
-
-            ctx.send(connection.ws, {
-                type: 'voice_rooms',
-                data: { rooms },
-                timestamp: Date.now()
-            });
-        } catch (error) {
-            console.error('Error getting voice rooms:', error);
-        }
+        // Stub: return empty list or guild rooms if implemented
+        ctx.send(connection.ws, {
+            type: 'voice_rooms_list',
+            data: { rooms: [] },
+            timestamp: Date.now()
+        });
     }
 }

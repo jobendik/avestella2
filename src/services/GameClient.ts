@@ -165,6 +165,10 @@ class GameClient extends EventEmitter {
         });
     }
 
+    public lightBeacon(beaconId: string) {
+        this.send('light_beacon', { beaconId });
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // PROGRESSION SYSTEM METHODS
     // ═══════════════════════════════════════════════════════════════════════════

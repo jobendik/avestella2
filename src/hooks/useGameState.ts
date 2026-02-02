@@ -396,6 +396,25 @@ export function useGameState(): UseGameStateReturn {
 
       // Replace entire aiAgents list with server-authoritative list
       state.aiAgents = newAgentsList;
+
+      // VOICE SYNC: Manually update voice hook with visible players
+      // This ensures we can talk to anyone we see, not just bonded friends
+      // We wrap them in pseudo-bonds since useVoice expects IBond[]
+      if (voice && voice.updateBonds) {
+        const visiblePlayersAsBonds = newAgentsList
+          .filter((a: any) => a.isRemotePlayer) // Only real players
+          .map((a: any) => ({
+            targetId: a.id,
+            targetName: a.name,
+            strength: 1, // Treat as full strength for voice (or 0, since we removed the check)
+            type: 'derived',
+            formedAt: Date.now()
+          }));
+
+        // Also include actual bonds if they are not in the list (e.g. far away friends?)
+        // For proximity voice, mapped players are what matters.
+        voice.updateBonds(visiblePlayersAsBonds as any);
+      }
     };
 
     (gameClient as any).on('world_state', handleWorldState);
@@ -705,6 +724,9 @@ export function useGameState(): UseGameStateReturn {
       beacon.lit = true;
       beacon.lightLevel = 1;
       state.beaconsLit++;
+
+      // Sync with server
+      gameClient.lightBeacon(beaconId);
     }
   }, []);
 
