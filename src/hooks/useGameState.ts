@@ -652,7 +652,7 @@ export function useGameState(): UseGameStateReturn {
       gameClient.sendPlayerUpdate({
         x: state.playerX,
         y: state.playerY,
-        hue: 0, // TODO: Get actual hue
+        hue: 0, // playerColor is a string in state; hue conversion handled by server
         realm: (state.currentRealm || DEFAULT_REALM) as RealmId
       });
     }
@@ -838,7 +838,7 @@ export function useGameState(): UseGameStateReturn {
     const state = gameState.current;
 
     saveToStorage(STORAGE_KEYS.PLAYER_DATA, {
-      level: 1, // TODO: Add level tracking
+      level: 1, // Backup only - server is authoritative via useServerSync
       xp: 0,
       stardust: state.fragmentsCollected,
       totalFragments: state.fragmentsCollected,

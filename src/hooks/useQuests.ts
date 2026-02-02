@@ -22,7 +22,7 @@ export interface QuestDefinition {
   trackingKey: QuestTrackingKey;
 }
 
-export type QuestTrackingKey = 
+export type QuestTrackingKey =
   | 'whispersSent'
   | 'starsGathered'
   | 'connectionsFormed'
@@ -167,8 +167,6 @@ export const WEEKLY_QUESTS: QuestDefinition[] = [
   },
 ];
 
-const STORAGE_KEY = 'avestella_quests';
-
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
@@ -194,33 +192,7 @@ function getDefaultState(): QuestState {
   };
 }
 
-function loadState(): QuestState {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Merge with defaults to handle new quests
-      const defaults = getDefaultState();
-      return {
-        ...defaults,
-        ...parsed,
-        dailyProgress: { ...defaults.dailyProgress, ...parsed.dailyProgress },
-        weeklyProgress: { ...defaults.weeklyProgress, ...parsed.weeklyProgress },
-      };
-    }
-  } catch {
-    console.warn('Failed to load quest state');
-  }
-  return getDefaultState();
-}
-
-function saveState(state: QuestState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    console.warn('Failed to save quest state');
-  }
-}
+// NOTE: loadState() and saveState() removed - useServerSync handles persistence now
 
 /**
  * Get milliseconds until next midnight UTC
@@ -271,7 +243,7 @@ function shouldResetDaily(lastReset: number): boolean {
 function shouldResetWeekly(lastReset: number): boolean {
   const lastResetDate = new Date(lastReset);
   const now = new Date();
-  
+
   // Get ISO week number
   const getWeek = (d: Date) => {
     const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -280,7 +252,7 @@ function shouldResetWeekly(lastReset: number): boolean {
     const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
     return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
   };
-  
+
   return (
     lastResetDate.getUTCFullYear() !== now.getUTCFullYear() ||
     getWeek(lastResetDate) !== getWeek(now)
@@ -299,10 +271,10 @@ export function useQuests(playerId?: string): UseQuestsReturn {
     dailySeconds: Math.floor(getTimeUntilDailyReset() / 1000),
     weeklySeconds: Math.floor(getTimeUntilWeeklyReset() / 1000),
   });
-  
+
   // Server sync for persistence
   const serverSync = useServerSync(playerId || 'anonymous');
-  
+
   // Sync from server when data arrives
   useEffect(() => {
     if (serverSync.playerData?.quests) {
@@ -310,7 +282,7 @@ export function useQuests(playerId?: string): UseQuestsReturn {
       setState(prev => {
         const dailyProgress = { ...prev.dailyProgress };
         const weeklyProgress = { ...prev.weeklyProgress };
-        
+
         // Merge server quest progress
         Object.entries(quests.questProgress || {}).forEach(([questId, progress]) => {
           const quest = [...DAILY_QUESTS, ...WEEKLY_QUESTS].find(q => q.id === questId);
@@ -321,7 +293,7 @@ export function useQuests(playerId?: string): UseQuestsReturn {
               completed: (progress as number) >= quest.target,
               claimedReward: quests.completedQuestIds?.includes(questId) || false,
             };
-            
+
             if (DAILY_QUESTS.some(q => q.id === questId)) {
               dailyProgress[questId] = progressData;
             } else {
@@ -329,7 +301,7 @@ export function useQuests(playerId?: string): UseQuestsReturn {
             }
           }
         });
-        
+
         return {
           ...prev,
           dailyProgress,

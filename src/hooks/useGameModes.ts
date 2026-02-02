@@ -400,7 +400,7 @@ export function useGameModes(): UseGameModesReturn {
         gameClient.sendSnapshot({
           x: momentMode.capturedState.playerX,
           y: momentMode.capturedState.playerY,
-          realm: 'genesis', // TODO: Get actual realm from context or state
+          realm: gameClient.getRealm(), // Use actual realm from gameClient
           visibleEntities: [],
           visiblePlayers: [],
           caption
