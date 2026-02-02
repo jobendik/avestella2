@@ -14,6 +14,7 @@ export interface UseVoiceReturn {
     error: string | null;
     analyser: AnalyserNode | null;
     updateBonds: (bonds: IBond[]) => void;
+    setNearbyPlayers: (playerIds: string[]) => void;
     isSpeaking: boolean;
 }
 
@@ -88,34 +89,40 @@ export function useVoice(
         setIsMuted(muted);
     }, []);
 
+    const nearbyPeersRef = useRef<string[]>([]);
+
     /**
-     * Check which peers we should be connected to based on bonds
+     * Check which peers we should be connected to based on bonds AND proximity
      */
     const checkConnections = useCallback(() => {
         if (!voiceService.enabled) return;
 
         const eligiblePeers = new Set<string>();
 
-        console.log('🎤 [useVoice] checkConnections running. activeBonds:', activeBondsRef.current.length, activeBondsRef.current);
-
+        // 1. Add Bonded Players
         activeBondsRef.current.forEach(bond => {
-            // Logic: Connect to all real players (remove bond threshold for now to fix "no voice" issue)
             if (!bond.targetId.startsWith('agent_')) {
                 eligiblePeers.add(bond.targetId);
             }
         });
 
-        // Also add any nearby players from gameClient if available (to ensure we catch non-bonded strangers)
-        // For now, let's assume the component using this hook passes all relevant "bonds" or we need a way to get nearby entities.
-        // Since useVoice depends on activeBonds, we interpret "strangers" as "bonds with 0 strength" if the game creates them.
-        // If the game DOESNT create bonds for strangers, we are missing them.
-        // But for this fix, we are removing the 0.5 limit.
+        // 2. Add Nearby Players (Proximity Chat)
+        nearbyPeersRef.current.forEach(id => {
+            eligiblePeers.add(id);
+        });
 
         voiceService.updateNearbyPeers(eligiblePeers);
     }, []);
 
     const updateBonds = useCallback((bonds: IBond[]) => {
         activeBondsRef.current = bonds;
+        if (isVoiceActive) {
+            checkConnections();
+        }
+    }, [isVoiceActive, checkConnections]);
+
+    const setNearbyPlayers = useCallback((playerIds: string[]) => {
+        nearbyPeersRef.current = playerIds;
         if (isVoiceActive) {
             checkConnections();
         }
@@ -140,6 +147,7 @@ export function useVoice(
         error,
         analyser: voiceService.analyser, // Direct access to service analyser
         updateBonds,
+        setNearbyPlayers,
         isSpeaking
     };
 }

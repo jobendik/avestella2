@@ -2,7 +2,7 @@
 // AVESTELLA - Game Context
 // ═══════════════════════════════════════════════════════════════════════════
 
-import React, { createContext, useContext, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { useGameState, type UseGameStateReturn } from '@/hooks/useGameState';
 import { useProgression, type UseProgressionReturn } from '@/hooks/useProgression';
 import { useAudio, type UseAudioReturn } from '@/hooks/useAudio';
@@ -22,6 +22,7 @@ import { useGameModes, type UseGameModesReturn } from '@/hooks/useGameModes';
 import { usePowerUps, type UsePowerUpsReturn } from '@/hooks/usePowerUps';
 import { useVoice, type UseVoiceReturn } from '@/hooks/useVoice';
 import { useTutorial, type UseTutorialReturn } from '@/hooks/useTutorial';
+import { gameClient } from '@/services/GameClient';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Context Types
@@ -85,9 +86,26 @@ export function GameProvider({ children }: GameProviderProps): JSX.Element {
   const settings = useSettings();
   const gameModes = useGameModes();
   const powerUps = usePowerUps();
-  // Initialize Voice (pass userId from state if available, or empty string. Pass active bonds.)
-  // We use the Ref current value safely, defaulting to empty if not ready
-  const voice = useVoice(gameState.gameState.current?.playerId || '', gameState.gameState.current?.bonds || []);
+  const playerId = gameState.gameState.current?.playerId || '';
+  const voice = useVoice(playerId, gameState.gameState.current?.bonds || []);
+
+  // Sync nearby players for Voice Chat (Proximity)
+  useEffect(() => {
+    const handleVoiceUpdate = (data: any) => {
+      if (data?.players) {
+        const remoteIds = data.players
+          .filter((p: any) => p.id !== playerId)
+          .map((p: any) => p.id);
+
+        voice.setNearbyPlayers(remoteIds);
+      }
+    };
+
+    gameClient.on('world_state', handleVoiceUpdate);
+    return () => {
+      gameClient.off('world_state', handleVoiceUpdate);
+    };
+  }, [voice, playerId]);
 
   const value: GameContextType = {
     gameState,

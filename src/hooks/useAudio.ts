@@ -56,6 +56,11 @@ export interface UseAudioReturn {
   stopAmbientLoop: () => void;
   isAmbientLoopActive: () => boolean;
   playSocialTone: (emotion?: 'greeting' | 'happy' | 'curious' | 'farewell' | 'neutral') => void;
+  // Background music
+  startBackgroundMusic: (src?: string) => void;
+  stopBackgroundMusic: () => void;
+  setBackgroundMusicVolume: (volume: number) => void;
+  isBackgroundMusicPlaying: () => boolean;
 }
 
 export function useAudio(): UseAudioReturn {
@@ -278,6 +283,11 @@ export function useAudio(): UseAudioReturn {
     stopAmbientLoop: () => audioEngine.current.stopAmbientLoop(),
     isAmbientLoopActive: () => audioEngine.current.isAmbientLoopActive(),
     playSocialTone: (emotion?: 'greeting' | 'happy' | 'curious' | 'farewell' | 'neutral') => audioEngine.current.playSocialTone(emotion),
+    // Background music
+    startBackgroundMusic: (src?: string) => audioEngine.current.startBackgroundMusic(src),
+    stopBackgroundMusic: () => audioEngine.current.stopBackgroundMusic(),
+    setBackgroundMusicVolume: (volume: number) => audioEngine.current.setBackgroundMusicVolume(volume),
+    isBackgroundMusicPlaying: () => audioEngine.current.isBackgroundMusicPlaying(),
   };
 }
 

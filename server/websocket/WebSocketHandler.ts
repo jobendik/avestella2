@@ -513,7 +513,6 @@ export class WebSocketHandler {
 
         // Set up message handler
         ws.on('message', (data) => {
-            console.log(`[WebSocket] RAW RECEIVED from ${playerId}:`, data.toString().substring(0, 200));
             this.handleMessage(playerId, data.toString());
         });
 
@@ -650,11 +649,6 @@ export class WebSocketHandler {
                     GameActionHandlers.handleGetPulsePatterns(connection, validatedData, ctx);
                     break;
 
-                // === VOICE ===
-                case 'voice_signal':
-                    VoiceHandlers.handleVoiceSignal(connection, validatedData, ctx);
-                    break;
-
                 // === CHAT ===
                 case 'chat':
                     ChatHandlers.handleChatMessage(connection, validatedData, ctx);
@@ -716,9 +710,6 @@ export class WebSocketHandler {
                     break;
                 case 'accept_friend':
                     PlayerDataHandlers.handleAcceptFriend(connection, validatedData, ctx);
-                    break;
-                case 'add_friend':
-                    FriendHandlers.handleAddFriend(connection, validatedData, ctx);
                     break;
                 case 'decline_friend':
                     PlayerDataHandlers.handleDeclineFriend(connection, validatedData, ctx);
@@ -824,7 +815,8 @@ export class WebSocketHandler {
 
                 // === WORLD STATE ===
                 case 'request_world_state':
-                    this.sendInitialWorldState(connection);
+                    // Trigger a world_state broadcast for this player's realm (not initial_state!)
+                    this.broadcastWorldState(connection.realm);
                     break;
 
                 // === POWER-UPS ===
@@ -1140,7 +1132,6 @@ export class WebSocketHandler {
                     VoiceHandlers.handleMute(connection, validatedData, ctx);
                     break;
                 case 'voice_speaking':
-                case 'speaking':
                     VoiceHandlers.handleSpeaking(connection, validatedData, ctx);
                     break;
                 case 'get_nearby_voice_peers':

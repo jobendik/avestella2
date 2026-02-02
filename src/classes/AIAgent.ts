@@ -740,8 +740,18 @@ export class AIAgent implements IAIAgent {
     // REMOTE PLAYER BYPASS - IMPORTANT!
     // ─────────────────────────────────────────────────────────────────────────
     // If this agent represents a remote player, they are controlled by SERVER STATE,
-    // not by local AI logic. We only run the visual updates above and then return.
+    // not by local AI logic. We only run the visual updates and SMOOTH INTERPOLATION.
     if (this.isRemotePlayer) {
+      // Smooth interpolation towards target position (eliminates stuttering)
+      if (this.targetX !== null && this.targetY !== null) {
+        // Use lerp factor of 0.12 for smooth movement (lower = smoother but slower to catch up)
+        this.x = lerp(this.x, this.targetX, 0.12);
+        this.y = lerp(this.y, this.targetY, 0.12);
+
+        // Snap if very close (avoid floating point drift)
+        if (Math.abs(this.x - this.targetX) < 0.5) this.x = this.targetX;
+        if (Math.abs(this.y - this.targetY) < 0.5) this.y = this.targetY;
+      }
       return;
     }
 

@@ -905,11 +905,18 @@ class GameClient extends EventEmitter {
 
         // Handle world_state for nearby player count
         if (msg.type === 'world_state' && msg.data?.players) {
-            // Count other players (excluding self)
-            this._nearbyPlayerCount = Object.keys(msg.data.players).filter(
-                id => id !== this.playerId
-            ).length;
+            // Count other players (excluding self) - handle both array and object
+            const players = msg.data.players;
+            const playerCount = Array.isArray(players)
+                ? players.filter((p: any) => p.id !== this.playerId).length
+                : Object.keys(players).filter(id => id !== this.playerId).length;
+            this._nearbyPlayerCount = playerCount;
             this.emit('nearby_count_update', { count: this._nearbyPlayerCount });
+
+            // DEBUG: Log world_state receipt occasionally
+            if (Math.random() < 0.02) {
+                console.log(`🌍 [GameClient] world_state: ${Array.isArray(players) ? players.length : Object.keys(players).length} players, ${msg.data.bots?.length || 0} bots`);
+            }
         }
 
         this.emit(msg.type, msg.data);

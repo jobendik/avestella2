@@ -2,7 +2,7 @@
 // AVESTELLA - Main Application Component (Refactored)
 // ═══════════════════════════════════════════════════════════════════════════
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { GameProvider, useGame } from '@/contexts/GameContext';
 import { UIProvider, useUI } from '@/contexts/UIContext';
 import { AnchoringProvider } from '@/contexts/AnchoringContext';
@@ -56,7 +56,7 @@ import { gameClient } from '@/services/GameClient';
 function AppLayout(): JSX.Element {
   const { activePanel, closePanel } = useUI();
   const { exploration } = useGame();
-  const { startAmbientLoop, stopAmbientLoop, playChatChime } = useAudio();
+  const { startBackgroundMusic, stopBackgroundMusic, playChatChime } = useAudio();
   const { isVisible: showHint, dismiss: dismissHint } = useHintPill({ storageKey: 'aura-welcome-hint' });
   const { snapshot, isModalOpen, takeSnapshot, downloadSnapshot, closeModal, copyToClipboard, shareSnapshot } = useSnapshot();
   const { isVisible: showInviteToast, copyInviteLink, hide: hideInviteToast } = useInviteToast();
@@ -70,11 +70,17 @@ function AppLayout(): JSX.Element {
   const [nearbyCount, setNearbyCount] = useState(gameClient.getNearbyPlayerCount());
   const [isConnected, setIsConnected] = useState(gameClient.isConnected());
 
-  // Start ambient loop on mount
+  // Start background music on mount (plays /music.mp3 at low volume)
+  // Using refs to avoid re-running the effect when functions change
+  const startMusicRef = useRef(startBackgroundMusic);
+  const stopMusicRef = useRef(stopBackgroundMusic);
+  startMusicRef.current = startBackgroundMusic;
+  stopMusicRef.current = stopBackgroundMusic;
+
   useEffect(() => {
-    startAmbientLoop();
-    return () => stopAmbientLoop();
-  }, [startAmbientLoop, stopAmbientLoop]);
+    startMusicRef.current('/music.mp3');
+    return () => stopMusicRef.current();
+  }, []); // Empty deps - only run on mount/unmount
 
   // Subscribe to real network stats from GameClient
   useEffect(() => {

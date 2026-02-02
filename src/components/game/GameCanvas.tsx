@@ -456,8 +456,8 @@ export function GameCanvas(): JSX.Element {
     state.playerX = clamp(state.playerX, 50, WORLD_SIZE - 50);
     state.playerY = clamp(state.playerY, 50, WORLD_SIZE - 50);
 
-    // Send position update to server (throttled to ~12Hz for network efficiency)
-    if (Math.random() < 0.2) {
+    // Send position update to server (throttled to ~20Hz for network efficiency)
+    if (Math.random() < 0.33) {
       gameClient.sendPlayerUpdate({
         x: state.playerX,
         y: state.playerY,
@@ -484,8 +484,9 @@ export function GameCanvas(): JSX.Element {
       const dy = agent.y - state.playerY;
       const distSq = dx * dx + dy * dy;
 
-      // Only fully update agents within range
-      if (distSq <= AGENT_UPDATE_DISTANCE * AGENT_UPDATE_DISTANCE) {
+      // Only fully update agents within range OR if they are remote players (to ensure they move into view)
+      // Remote players are cheap to update (just lerp) and essential for multiplayer synchronization.
+      if (agent.isRemotePlayer || distSq <= AGENT_UPDATE_DISTANCE * AGENT_UPDATE_DISTANCE) {
         if (agent.update) {
           agent.update(
             deltaTime,

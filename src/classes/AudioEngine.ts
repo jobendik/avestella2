@@ -43,6 +43,10 @@ export class AudioEngine {
   private currentAmbient: OscillatorNode[] = [];
   private currentBiome: string | null = null;
 
+  // Background Music System
+  private backgroundMusic: HTMLAudioElement | null = null;
+  private backgroundMusicVolume = 0.05; // 5% volume for subtle background music
+
   // Ambient Layers System
   private ambientLayers: Map<string, { oscillators: OscillatorNode[]; gains: GainNode[] }> = new Map();
 
@@ -108,6 +112,116 @@ export class AudioEngine {
     if (this.ctx && this.ctx.state === 'suspended') {
       await resumeAudioContext(this.ctx);
     }
+  }
+
+  // =========================================================================
+  // BACKGROUND MUSIC SYSTEM
+  // =========================================================================
+
+  private backgroundMusicPending = false;
+  private backgroundMusicSrc = '/music.mp3';
+
+  /**
+   * Start playing background music
+   * Uses HTML Audio element for better performance with large files
+   */
+  startBackgroundMusic(src: string = '/music.mp3'): void {
+    // Already playing or pending - don't start again
+    if (this.backgroundMusicPending) {
+      return;
+    }
+    
+    if (this.backgroundMusic && !this.backgroundMusic.paused) {
+      // Already playing
+      return;
+    }
+
+    this.backgroundMusicSrc = src;
+
+    if (!this.backgroundMusic) {
+      this.backgroundMusic = new Audio(src);
+      this.backgroundMusic.loop = true;
+    }
+    
+    this.backgroundMusic.volume = this.muted || this.musicMuted ? 0 : this.backgroundMusicVolume;
+    
+    // Play with user interaction handling
+    const playPromise = this.backgroundMusic.play();
+    if (playPromise) {
+      playPromise.catch(() => {
+        // Autoplay blocked - set up listeners for user interaction (only log once)
+        if (!this.backgroundMusicPending) {
+          console.log('Background music autoplay blocked, will play on user interaction');
+        }
+        this.backgroundMusicPending = true;
+        this.setupUserInteractionListener();
+      });
+    }
+  }
+
+  /**
+   * Set up listener for user interaction to start music
+   */
+  private userInteractionHandler: (() => void) | null = null;
+
+  private setupUserInteractionListener(): void {
+    if (this.userInteractionHandler) return; // Already set up
+
+    this.userInteractionHandler = () => {
+      if (this.backgroundMusicPending && this.backgroundMusic) {
+        this.backgroundMusic.play().then(() => {
+          console.log('Background music started after user interaction');
+          this.backgroundMusicPending = false;
+          this.removeUserInteractionListener();
+        }).catch(() => {
+          // Still blocked, keep waiting
+        });
+      }
+    };
+
+    // Listen for various user interactions
+    document.addEventListener('click', this.userInteractionHandler);
+    document.addEventListener('keydown', this.userInteractionHandler);
+    document.addEventListener('touchstart', this.userInteractionHandler);
+  }
+
+  private removeUserInteractionListener(): void {
+    if (this.userInteractionHandler) {
+      document.removeEventListener('click', this.userInteractionHandler);
+      document.removeEventListener('keydown', this.userInteractionHandler);
+      document.removeEventListener('touchstart', this.userInteractionHandler);
+      this.userInteractionHandler = null;
+    }
+  }
+
+  /**
+   * Stop background music
+   */
+  stopBackgroundMusic(): void {
+    this.backgroundMusicPending = false;
+    this.removeUserInteractionListener();
+    if (this.backgroundMusic) {
+      this.backgroundMusic.pause();
+      this.backgroundMusic.currentTime = 0;
+      this.backgroundMusic = null;
+    }
+  }
+
+  /**
+   * Set background music volume (0-1)
+   */
+  setBackgroundMusicVolume(volume: number): void {
+    this.backgroundMusicVolume = Math.max(0, Math.min(1, volume));
+    if (this.backgroundMusic) {
+      this.backgroundMusic.volume = this.muted || this.musicMuted ? 0 : this.backgroundMusicVolume;
+    }
+  }
+
+  /**
+   * Check if background music is playing
+   */
+  isBackgroundMusicPlaying(): boolean {
+    return this.backgroundMusic !== null && !this.backgroundMusic.paused;
   }
 
   /**
@@ -633,25 +747,14 @@ export class AudioEngine {
   }
 
   /**
-   * Update drone volume based on nearby player count (LEGACY)
-   * More souls nearby = richer, fuller ambient sound
+   * Update drone volume based on nearby player count
+   * DISABLED: Drone proximity volume adjustments were part of the annoying ambient system.
    */
   private droneProximityVolume = 0.03;
 
   updateDroneProximity(nearbyCount: number): void {
-    if (!this.initialized || !this.ctx || this.musicMuted) return;
-
-    // Base volume + scale with nearby players (capped)
-    this.droneProximityVolume = 0.03 + Math.min(nearbyCount * 0.02, 0.15);
-
-    // Apply to ambient gain if available
-    if (this.ambientGain) {
-      this.ambientGain.gain.setTargetAtTime(
-        this.droneProximityVolume * this.musicVolume,
-        this.ctx.currentTime,
-        1
-      );
-    }
+    // DISABLED: Drone proximity volume was part of the annoying ambient system
+    return;
   }
 
   // =========================================================================
@@ -678,9 +781,15 @@ export class AudioEngine {
 
   /**
    * Start ambient audio loop for atmosphere
-   * Plays random subtle sparkle sounds at intervals
+   * DISABLED: Random sparkle sounds every 3 seconds were distracting.
+   * The world should react to player actions, not constantly make noise.
    */
   startAmbientLoop(): void {
+    // DISABLED: The random ambient sparkle sounds were distracting.
+    // Sound effects should be triggered by meaningful game events, not randomly.
+    return;
+    
+    /*
     if (this.ambientLoopInterval || this.ambientLoopActive) return;
 
     this.ambientLoopActive = true;
@@ -690,6 +799,7 @@ export class AudioEngine {
         this.playAmbientSparkle();
       }
     }, 3000);
+    */
   }
 
   /**
@@ -745,8 +855,17 @@ export class AudioEngine {
 
   /**
    * Play ambient sound for a biome
+   * DISABLED: Continuous oscillator-based ambient was annoying.
+   * Consider using actual audio files for ambient background music instead.
    */
   playBiomeAmbient(biomeId: string): void {
+    // DISABLED: The continuous oscillator-based ambient sounds were too intrusive
+    // and created an annoying humming effect. For a better audio experience,
+    // consider using actual background music audio files instead.
+    return;
+    
+    // Original implementation kept for reference:
+    /*
     if (!this.initialized || !this.ctx || !this.ambientGain) return;
     if (this.currentBiome === biomeId) return; // Already playing this biome
 
@@ -788,11 +907,13 @@ export class AudioEngine {
 
       this.currentAmbient.push(osc);
     }
+    */
   }
 
   /**
    * Stop ambient sounds
    */
+
   stopAmbient(): void {
     for (const osc of this.currentAmbient) {
       try {
@@ -812,13 +933,21 @@ export class AudioEngine {
 
   /**
    * Initialize environment audio layers (wind noise, hum, drone)
+   * DISABLED: The procedural ambient audio was too intrusive.
    */
   initEnvironmentAudio(): void {
+    // DISABLED: Procedural ambient audio (wind noise, movement hum, cold drone)
+    // was creating annoying constant humming sounds.
+    // Consider using actual audio files for ambient music instead.
+    return;
+    
+    /*
     if (!this.ctx || !this.ambientGain) return;
 
     this.createWindNoise();
     this.createMovementHum();
     this.createColdDrone();
+    */
   }
 
   /**
@@ -904,39 +1033,21 @@ export class AudioEngine {
 
   /**
    * Update movement hum based on player speed
+   * DISABLED: Movement-based humming was annoying.
    */
   updateMovementHum(speed: number): void {
-    if (!this.humNode || !this.ctx || !this.humNode.osc) return;
-
-    const targetFreq = 100 + (speed * 20);
-    const targetVol = Math.min(0.2, speed * 0.05);
-
-    this.humNode.osc.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.1);
-    this.humNode.gain.gain.setTargetAtTime(targetVol, this.ctx.currentTime, 0.1);
+    // DISABLED: Movement hum was part of the annoying ambient audio system
+    return;
   }
 
   /**
    * Set environment type to adapt audio layers
+   * DISABLED: Environment-based audio layers (wind, drone) were annoying.
    * @param type - 'warm' (near others), 'wind' (exploring), 'cold' (isolated)
    */
   setEnvironment(type: 'warm' | 'wind' | 'cold'): void {
-    if (!this.windNode || !this.droneNode || !this.ctx) return;
-    if (this.currentEnvironment === type) return;
-
-    this.currentEnvironment = type;
-    const now = this.ctx.currentTime;
-
-    // Adjust wind noise volume
-    const windVol = (type === 'wind' || type === 'cold') ? 0.3 : 0.05;
-    this.windNode.gain.gain.setTargetAtTime(windVol * this.ambientVolume, now, 2);
-
-    // Adjust drone volume (only loud when cold)
-    const droneVol = (type === 'cold') ? 0.2 : 0.0;
-    this.droneNode.gain.gain.setTargetAtTime(droneVol * this.ambientVolume, now, 3);
-
-    // Adjust wind filter for different feels
-    const windFreq = type === 'cold' ? 200 : type === 'wind' ? 400 : 600;
-    this.windNode.filter.frequency.setTargetAtTime(windFreq, now, 1);
+    // DISABLED: Environment audio layers (wind noise, cold drone) were annoying
+    return;
   }
 
   /**
@@ -957,6 +1068,10 @@ export class AudioEngine {
     if (this.masterGain) {
       this.masterGain.gain.value = muted ? 0 : 1;
     }
+    // Also mute/unmute background music
+    if (this.backgroundMusic) {
+      this.backgroundMusic.volume = muted || this.musicMuted ? 0 : this.backgroundMusicVolume;
+    }
   }
 
   /**
@@ -966,6 +1081,10 @@ export class AudioEngine {
     this.musicMuted = muted;
     if (this.musicGain) {
       this.musicGain.gain.value = muted ? 0 : this.musicVolume;
+    }
+    // Also mute/unmute background music
+    if (this.backgroundMusic) {
+      this.backgroundMusic.volume = this.muted || muted ? 0 : this.backgroundMusicVolume;
     }
   }
 
@@ -1115,18 +1234,11 @@ export class AudioEngine {
 
   /**
    * Start default ambient background (from legacy_2)
-   * Creates 3 oscillator layers at different frequencies
+   * DISABLED: Oscillator layers creating constant humming were annoying.
    */
   startLegacyAmbient(): void {
-    if (!this.initialized || !this.ctx || !this.ambientGain) return;
-
-    const layerConfigs = [
-      { freq: 60, vol: 0.1 },
-      { freq: 90, vol: 0.08 },
-      { freq: 120, vol: 0.05 }
-    ];
-
-    this.startAmbientLayer('legacy_ambient', layerConfigs.map(c => c.freq), 'sine', 0.03);
+    // DISABLED: The 3-layer oscillator ambient was creating constant humming
+    return;
   }
 
   /**
@@ -1156,8 +1268,14 @@ export class AudioEngine {
 
   /**
    * Start an ambient layer (warmth, stars, etc.)
+   * DISABLED: Continuous oscillator-based ambient layers were annoying.
    */
   startAmbientLayer(layerId: string, frequencies: number[], type: OscillatorType = 'sine', volume: number = 0.02): void {
+    // DISABLED: Continuous ambient layers (oscillators) were creating annoying humming
+    return;
+  
+    // Original implementation kept for reference:
+    /*
     if (!this.initialized || !this.ctx || !this.ambientGain) return;
 
     // Don't start if already running
@@ -1186,6 +1304,7 @@ export class AudioEngine {
     }
 
     this.ambientLayers.set(layerId, { oscillators, gains });
+    */
   }
 
   /**

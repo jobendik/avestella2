@@ -4,7 +4,7 @@
 
 import { useRef, useCallback, useState, useEffect } from 'react';
 import type { GameStateRef, Beacon, IBond, IAIAgent, IParticle } from '@/types';
-import { Bond } from '@/classes/Bond';
+import { Bond } from '@/classes/Bond';  // voice removal
 import { Particle } from '@/classes/Particle';
 import { AIAgent } from '@/classes/AIAgent';
 import { Ripple, Shockwave } from '@/classes/Effects';
@@ -18,7 +18,6 @@ import { gameClient, type RealmId } from '@/services/GameClient';
 // Note: PERSONALITY_TYPES removed - AI agents are now server-authoritative
 
 
-import { useVoice } from './useVoice';
 
 export interface UseGameStateReturn {
   gameState: React.RefObject<GameStateRef>;
@@ -57,15 +56,6 @@ export interface UseGameStateReturn {
   targetRealmName: string;
   targetRealmIcon: string;
   switchRealm: (realmId: string, name: string, icon: string) => void;
-  voice: {
-    joinVoice: () => Promise<void>;
-    leaveVoice: () => void;
-    toggleMute: () => void;
-    isVoiceActive: boolean;
-    isMuted: boolean;
-    peers: any[];
-    error: string | null;
-  };
 }
 
 export function useGameState(): UseGameStateReturn {
@@ -187,13 +177,9 @@ export function useGameState(): UseGameStateReturn {
   // useVoice can handle polling/ref checks? 
   // Let's pass the ref.current.bonds but realize it might be stale in React terms.
   // Better: We force an update when bonds change (formBond calls set...)
-  // But formBond is a callback modifying ref.
-
   // Let's rely on the game loop to update things or keep it simple.
   // Actually, let's just pass `gameState.current.bonds` and use a `version` state to trigger updates if needed.
   // For now, I'll pass the array. If it doesn't work reactively, I'll add a version trigger.
-
-  const voice = useVoice(playerId, gameState.current.bonds);
 
   /**
    * Initialize game state with defaults
@@ -265,11 +251,6 @@ export function useGameState(): UseGameStateReturn {
       const remotePlayers = data.players.filter((p: any) => p.id !== playerId);
       const serverBots = data.bots || [];
 
-      // Debug: Log positions to verify server is sending correct data
-      if ((remotePlayers.length > 0 || serverBots.length > 0) && Math.random() < 0.02) {
-        console.log(`🌐 My pos: (${Math.round(state.playerX)}, ${Math.round(state.playerY)}) | Players: ${remotePlayers.length} | Bots: ${serverBots.length}`);
-      }
-
       // ═══════════════════════════════════════════════════════════════════════
       // SERVER-AUTHORITATIVE: Update ALL entities from server
       // ═══════════════════════════════════════════════════════════════════════
@@ -331,9 +312,9 @@ export function useGameState(): UseGameStateReturn {
       for (const botData of serverBots) {
         const existing = currentAgentsById.get(botData.id);
         if (existing) {
-          // Update existing bot
-          existing.x = botData.x;
-          existing.y = botData.y;
+          // Set TARGET positions for smooth interpolation (not direct x/y which causes stuttering)
+          existing.targetX = botData.x;
+          existing.targetY = botData.y;
           existing.name = botData.name;
           // Sync social state (always update to catch clears)
           existing.currentMessage = botData.message || null;
@@ -352,6 +333,9 @@ export function useGameState(): UseGameStateReturn {
           );
           newAgent.id = botData.id;
           newAgent.name = botData.name || 'Bot';
+          // Initialize target positions for interpolation
+          newAgent.targetX = botData.x;
+          newAgent.targetY = botData.y;
           // Set social state for new bots too
           newAgent.currentMessage = botData.message || null;
           newAgent.isSpeaking = botData.speaking || false;
@@ -364,9 +348,9 @@ export function useGameState(): UseGameStateReturn {
       for (const playerData of remotePlayers) {
         const existing = currentAgentsById.get(playerData.id);
         if (existing) {
-          // Update existing player
-          existing.x = playerData.x;
-          existing.y = playerData.y;
+          // Set TARGET positions for smooth interpolation (not direct x/y which causes stuttering)
+          existing.targetX = playerData.x;
+          existing.targetY = playerData.y;
           existing.name = playerData.name || `Player_${playerData.id.substring(0, 6)}`;
           // Sync social state (always update to catch clears)
           existing.currentMessage = playerData.message || null;
@@ -386,6 +370,9 @@ export function useGameState(): UseGameStateReturn {
           );
           newAgent.id = playerData.id;
           newAgent.name = playerData.name || `Player_${playerData.id.substring(0, 6)}`;
+          // Initialize target positions for interpolation
+          newAgent.targetX = playerData.x;
+          newAgent.targetY = playerData.y;
           // Set social state for new players too
           newAgent.currentMessage = playerData.message || null;
           newAgent.isSpeaking = playerData.speaking || false;
@@ -397,24 +384,7 @@ export function useGameState(): UseGameStateReturn {
       // Replace entire aiAgents list with server-authoritative list
       state.aiAgents = newAgentsList;
 
-      // VOICE SYNC: Manually update voice hook with visible players
-      // This ensures we can talk to anyone we see, not just bonded friends
-      // We wrap them in pseudo-bonds since useVoice expects IBond[]
-      if (voice && voice.updateBonds) {
-        const visiblePlayersAsBonds = newAgentsList
-          .filter((a: any) => a.isRemotePlayer) // Only real players
-          .map((a: any) => ({
-            targetId: a.id,
-            targetName: a.name,
-            strength: 1, // Treat as full strength for voice (or 0, since we removed the check)
-            type: 'derived',
-            formedAt: Date.now()
-          }));
 
-        // Also include actual bonds if they are not in the list (e.g. far away friends?)
-        // For proximity voice, mapped players are what matters.
-        voice.updateBonds(visiblePlayersAsBonds as any);
-      }
     };
 
     (gameClient as any).on('world_state', handleWorldState);
@@ -1211,7 +1181,7 @@ export function useGameState(): UseGameStateReturn {
     addFloatingText,
     isTalking,
     setIsTalking,
-    voice
+
   };
 }
 
