@@ -157,7 +157,7 @@ class GameClient extends EventEmitter {
 
     public sendChat(text: string) {
         this.send('chat', {
-            text,
+            message: text,
             playerId: this.playerId,
             realm: this.realm
         });

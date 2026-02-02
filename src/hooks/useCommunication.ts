@@ -64,20 +64,20 @@ export interface CommunicationData {
   // Chat settings
   chatEnabled: boolean;
   chatBubbleDuration: number; // seconds
-  
+
   // Signal settings
   signalsEnabled: boolean;
   signalCooldown: number; // seconds
   lastSignalTime: number;
-  
+
   // Friends & Blocks
   friends: string[];
   blocked: string[];
   recentPlayers: PlayerInteraction[];
-  
+
   // Emote favorites
   favoriteEmotes: string[];
-  
+
   // Stats
   messagesSent: number;
   signalsSent: number;
@@ -89,24 +89,24 @@ export interface UseCommunicationReturn {
   data: CommunicationData;
   chatBubbles: ChatBubble[];
   lightSignals: LightSignal[];
-  
+
   // Chat actions
   sendQuickChat: (chatId: string, x: number, y: number, senderName: string, senderColor: string) => void;
   sendCustomMessage: (message: string, icon: string, x: number, y: number, senderName: string, senderColor: string) => void;
   clearExpiredBubbles: () => void;
-  
+
   // Signal actions
   sendLightSignal: (type: LightSignal['type'], x: number, y: number, senderColor: string) => boolean;
   clearExpiredSignals: () => void;
   canSendSignal: () => boolean;
   getSignalCooldownRemaining: () => number;
-  
+
   // Emotes
   getEmotes: () => Emote[];
   getEmotesByCategory: (category: Emote['category']) => Emote[];
   toggleFavoriteEmote: (emoteId: string) => void;
   isFavoriteEmote: (emoteId: string) => boolean;
-  
+
   // Player interactions
   addFriend: (playerId: string, playerName: string, playerColor: string) => boolean;
   removeFriend: (playerId: string) => boolean;
@@ -116,12 +116,12 @@ export interface UseCommunicationReturn {
   isBlocked: (playerId: string) => boolean;
   getRecentPlayers: () => PlayerInteraction[];
   addRecentPlayer: (playerId: string, playerName: string, playerColor: string) => void;
-  
+
   // Settings
   setChatEnabled: (enabled: boolean) => void;
   setSignalsEnabled: (enabled: boolean) => void;
   setChatBubbleDuration: (seconds: number) => void;
-  
+
   // Persistence
   saveCommunication: () => void;
   loadCommunication: () => void;
@@ -138,7 +138,7 @@ const EMOTES: Emote[] = [
   { id: 'hello', emoji: '🙋', name: 'Hello', category: 'greeting' },
   { id: 'bow', emoji: '🙇', name: 'Bow', category: 'greeting' },
   { id: 'salute', emoji: '🫡', name: 'Salute', category: 'greeting' },
-  
+
   // Emotions
   { id: 'happy', emoji: '😊', name: 'Happy', category: 'emotion' },
   { id: 'love', emoji: '🥰', name: 'Love', category: 'emotion' },
@@ -148,7 +148,7 @@ const EMOTES: Emote[] = [
   { id: 'cool', emoji: '😎', name: 'Cool', category: 'emotion' },
   { id: 'sad', emoji: '😢', name: 'Sad', category: 'emotion' },
   { id: 'sleepy', emoji: '😴', name: 'Sleepy', category: 'emotion' },
-  
+
   // Actions
   { id: 'thumbsup', emoji: '👍', name: 'Thumbs Up', category: 'action' },
   { id: 'thumbsdown', emoji: '👎', name: 'Thumbs Down', category: 'action' },
@@ -156,7 +156,7 @@ const EMOTES: Emote[] = [
   { id: 'pray', emoji: '🙏', name: 'Pray', category: 'action' },
   { id: 'point', emoji: '👉', name: 'Point', category: 'action' },
   { id: 'run', emoji: '🏃', name: 'Run', category: 'action' },
-  
+
   // Celebrations
   { id: 'party', emoji: '🎉', name: 'Party', category: 'celebration' },
   { id: 'sparkles', emoji: '✨', name: 'Sparkles', category: 'celebration' },
@@ -220,6 +220,11 @@ export function useCommunication(): UseCommunicationReturn {
     const chatOption = QUICK_CHAT_OPTIONS.find(opt => opt.id === chatId);
     if (!chatOption) return;
 
+    // Send to server for multiplayer broadcast
+    if (gameClient.isConnected()) {
+      gameClient.sendChat(chatOption.text);
+    }
+
     const now = Date.now();
     const bubble: ChatBubble = {
       id: generateId(),
@@ -247,6 +252,11 @@ export function useCommunication(): UseCommunicationReturn {
     senderColor: string
   ) => {
     if (!data.chatEnabled) return;
+
+    // Send to server for multiplayer broadcast
+    if (gameClient.isConnected()) {
+      gameClient.sendChat(message);
+    }
 
     const now = Date.now();
     const bubble: ChatBubble = {
@@ -471,7 +481,7 @@ export function useCommunication(): UseCommunicationReturn {
   const saveCommunication = useCallback(() => {
     // Save locally
     saveToStorage(COMMUNICATION_STORAGE_KEY, data);
-    
+
     // Sync to server if connected
     if (gameClient.isConnected()) {
       gameClient.syncCommunication({
@@ -492,7 +502,7 @@ export function useCommunication(): UseCommunicationReturn {
         ...saved,
       });
     }
-    
+
     // Also request from server if connected
     if (gameClient.isConnected()) {
       gameClient.requestCommunication();

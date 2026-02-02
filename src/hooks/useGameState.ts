@@ -446,6 +446,94 @@ export function useGameState(): UseGameStateReturn {
 
     (gameClient as any).on('player_update', handlePlayerUpdate);
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // INCOMING BROADCAST LISTENERS - Multiplayer Communication
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Listen for chat messages from other players
+    const handleChatMessage = (data: any) => {
+      if (!data || data.playerId === playerId) return;
+      const state = gameState.current;
+
+      // Find the agent and set their currentMessage
+      const agent = state.aiAgents.find(a => a.id === data.playerId);
+      if (agent) {
+        agent.currentMessage = data.message;
+
+        // Add floating text above the player
+        state.floatingTexts.push({
+          id: `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          x: agent.x,
+          y: agent.y - 30,
+          text: data.message,
+          hue: 60, // Golden-yellow for chat
+          size: 14,
+          life: 1,
+          decay: 0.015, // Slower decay for readability
+          vy: -0.5,
+        });
+
+        // Clear message after 5 seconds
+        setTimeout(() => {
+          if (agent.currentMessage === data.message) {
+            agent.currentMessage = null;
+          }
+        }, 5000);
+      }
+    };
+    (gameClient as any).on('chat_message', handleChatMessage);
+
+    // Listen for pulse events from other players
+    const handlePulse = (data: any) => {
+      if (!data || data.playerId === playerId) return;
+      const state = gameState.current;
+
+      const pulseColor = data.color || '#87CEEB';
+      const intensity = data.intensity || 0.5;
+
+      // Create expanding ring ripple effect
+      for (let i = 0; i < 3; i++) {
+        state.ripples.push({
+          x: data.x,
+          y: data.y,
+          radius: 10 + i * 15,
+          maxRadius: 100 + intensity * 100 + i * 40,
+          alpha: 0.5 - i * 0.1,
+          speed: 3 + i * 0.5,
+          color: pulseColor,
+          life: 1
+        } as any);
+      }
+
+      // Add burst particles
+      const particleCount = Math.floor(8 + intensity * 12);
+      for (let i = 0; i < particleCount; i++) {
+        const angle = (i / particleCount) * Math.PI * 2;
+        const speed = 1.5 + Math.random() * 2 * intensity;
+        state.particles.push({
+          x: data.x,
+          y: data.y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 3 + Math.random() * 4,
+          color: pulseColor,
+          alpha: 0.8,
+          life: 1,
+          maxLife: 1,
+          decay: 0.02,
+          type: 'spark' as const
+        } as any);
+      }
+
+      // Mark agent as pulsing
+      const agent = state.aiAgents.find(a => a.id === data.playerId);
+      if (agent) {
+        agent.isPulsing = true;
+        setTimeout(() => { agent.isPulsing = false; }, 1000);
+      }
+    };
+    (gameClient as any).on('pulse', handlePulse);
+
     // Cleanup on unmount
     return () => {
       (gameClient as any).off('world_state', handleWorldState);
@@ -453,6 +541,8 @@ export function useGameState(): UseGameStateReturn {
       (gameClient as any).off('fragment_removed', handleFragmentRemoved);
       (gameClient as any).off('fragment_collected', handleFragmentCollected);
       (gameClient as any).off('player_update', handlePlayerUpdate);
+      (gameClient as any).off('chat_message', handleChatMessage);
+      (gameClient as any).off('pulse', handlePulse);
     };
 
   }, [playerId]);
@@ -1011,6 +1101,19 @@ export function useGameState(): UseGameStateReturn {
     selectedEntity,
     setSelectedEntity,
     broadcastGesture: useCallback((type, x, y) => {
+      // Send to server for multiplayer broadcast
+      if (type === 'pulse') {
+        gameClient.sendAction('pulse', {
+          x,
+          y,
+          intensity: 0.8,
+          color: gameState.current.playerColor || '#87CEEB'
+        });
+      } else if (type === 'signal') {
+        gameClient.sendAction('emote', { type: 'signal', x, y });
+      }
+
+      // Also notify local AI agents
       gameState.current.aiAgents.forEach(agent => {
         if (agent.reactToGesture) agent.reactToGesture(type, x, y);
       });

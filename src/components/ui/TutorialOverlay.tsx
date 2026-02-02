@@ -1,10 +1,11 @@
 import React from 'react';
-import { useTutorial } from '@/hooks/useTutorial';
+import { useGame } from '@/contexts/GameContext';
 import { useUI } from '@/contexts/UIContext';
 import { ChevronRight, X, HelpCircle, MousePointer2 } from 'lucide-react';
 
 export function TutorialOverlay(): JSX.Element | null {
-    const { showTutorial, currentStep, tutorialStep, totalSteps, skipTutorial, advanceTutorial } = useTutorial();
+    const { tutorial } = useGame();
+    const { showTutorial, currentStep, tutorialStep, totalSteps, skipTutorial, advanceTutorial } = tutorial;
     const { isHUDVisible } = useUI();
 
     if (!showTutorial || !currentStep || !isHUDVisible) return null;
