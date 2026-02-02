@@ -335,11 +335,10 @@ export function useGameState(): UseGameStateReturn {
           existing.x = botData.x;
           existing.y = botData.y;
           existing.name = botData.name;
-          if (botData.singing) existing.singing = botData.singing;
-          if (botData.pulsing) existing.pulsing = botData.pulsing;
-          if (botData.message) existing.currentMessage = botData.message;
-          if (botData.speaking !== undefined) existing.isSpeaking = botData.speaking;
-          if (botData.pulsing !== undefined) existing.isPulsing = botData.pulsing;
+          // Sync social state (always update to catch clears)
+          existing.currentMessage = botData.message || null;
+          existing.isSpeaking = botData.speaking || false;
+          existing.isPulsing = botData.pulsing || false;
           newAgentsList.push(existing);
         } else {
           // Create new bot agent
@@ -353,7 +352,10 @@ export function useGameState(): UseGameStateReturn {
           );
           newAgent.id = botData.id;
           newAgent.name = botData.name || 'Bot';
-          // Note: xp is tracked server-side, not needed on client
+          // Set social state for new bots too
+          newAgent.currentMessage = botData.message || null;
+          newAgent.isSpeaking = botData.speaking || false;
+          newAgent.isPulsing = botData.pulsing || false;
           newAgentsList.push(newAgent);
         }
       }
@@ -366,10 +368,10 @@ export function useGameState(): UseGameStateReturn {
           existing.x = playerData.x;
           existing.y = playerData.y;
           existing.name = playerData.name || `Player_${playerData.id.substring(0, 6)}`;
-          // Sync social state
-          if (playerData.message !== undefined) existing.currentMessage = playerData.message;
-          if (playerData.speaking !== undefined) existing.isSpeaking = playerData.speaking;
-          if (playerData.pulsing !== undefined) existing.isPulsing = playerData.pulsing;
+          // Sync social state (always update to catch clears)
+          existing.currentMessage = playerData.message || null;
+          existing.isSpeaking = playerData.speaking || false;
+          existing.isPulsing = playerData.pulsing || false;
 
           newAgentsList.push(existing);
         } else {
@@ -384,6 +386,10 @@ export function useGameState(): UseGameStateReturn {
           );
           newAgent.id = playerData.id;
           newAgent.name = playerData.name || `Player_${playerData.id.substring(0, 6)}`;
+          // Set social state for new players too
+          newAgent.currentMessage = playerData.message || null;
+          newAgent.isSpeaking = playerData.speaking || false;
+          newAgent.isPulsing = playerData.pulsing || false;
           newAgentsList.push(newAgent);
         }
       }
