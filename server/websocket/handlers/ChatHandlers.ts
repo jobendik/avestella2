@@ -77,173 +77,173 @@ export class ChatHandlers {
             console.error('Failed to handle chat message:', error);
         }
     }
-}
+
 
     /**
      * Handle whisper (private message)
      */
-    static async handleWhisper(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise < void> {
-    try {
-        const { targetId, message } = data;
+    static async handleWhisper(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
+        try {
+            const { targetId, message } = data;
 
-        if(!message || typeof message !== 'string' || !targetId) return;
+            if (!message || typeof message !== 'string' || !targetId) return;
 
-    const trimmed = message.trim();
-    if(trimmed.length === 0 || trimmed.length > 500) {
-    ctx.sendError(connection, 'Invalid message length');
-    return;
-}
+            const trimmed = message.trim();
+            if (trimmed.length === 0 || trimmed.length > 500) {
+                ctx.sendError(connection, 'Invalid message length');
+                return;
+            }
 
-// Find target player
-let targetConnection: PlayerConnection | null = null;
-for (const realm of Array.from(ctx.realms.values())) {
-    for (const conn of Array.from(realm.values())) {
-        if (conn.playerId === targetId) {
-            targetConnection = conn;
-            break;
-        }
-    }
-    if (targetConnection) break;
-}
+            // Find target player
+            let targetConnection: PlayerConnection | null = null;
+            for (const realm of Array.from(ctx.realms.values())) {
+                for (const conn of Array.from(realm.values())) {
+                    if (conn.playerId === targetId) {
+                        targetConnection = conn;
+                        break;
+                    }
+                }
+                if (targetConnection) break;
+            }
 
-if (!targetConnection) {
-    ctx.sendError(connection, 'Player not online');
-    return;
-}
+            if (!targetConnection) {
+                ctx.sendError(connection, 'Player not online');
+                return;
+            }
 
-const filtered = filterMessage(trimmed);
-const now = Date.now();
+            const filtered = filterMessage(trimmed);
+            const now = Date.now();
 
-// Send to target
-ctx.send(targetConnection.ws, {
-    type: 'whisper_received',
-    data: {
-        fromId: connection.playerId,
-        fromName: connection.playerName,
-        message: filtered,
-        timestamp: now
-    },
-    timestamp: now
-});
+            // Send to target
+            ctx.send(targetConnection.ws, {
+                type: 'whisper_received',
+                data: {
+                    fromId: connection.playerId,
+                    fromName: connection.playerName,
+                    message: filtered,
+                    timestamp: now
+                },
+                timestamp: now
+            });
 
-// Confirm to sender
-ctx.send(connection.ws, {
-    type: 'whisper_sent',
-    data: {
-        toId: targetId,
-        message: filtered,
-        timestamp: now
-    },
-    timestamp: now
-});
+            // Confirm to sender
+            ctx.send(connection.ws, {
+                type: 'whisper_sent',
+                data: {
+                    toId: targetId,
+                    message: filtered,
+                    timestamp: now
+                },
+                timestamp: now
+            });
         } catch (error) {
-    console.error('Failed to handle whisper:', error);
-}
+            console.error('Failed to handle whisper:', error);
+        }
     }
 
     /**
      * Handle emoji reaction
      */
-    static async handleEmojiReaction(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise < void> {
-    try {
-        const { emoji, targetId } = data;
+    static async handleEmojiReaction(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
+        try {
+            const { emoji, targetId } = data;
 
-        if(!emoji || typeof emoji !== 'string') return;
+            if (!emoji || typeof emoji !== 'string') return;
 
-    const now = Date.now();
-    const reaction = {
-        type: 'emoji_reaction',
-        data: {
-            playerId: connection.playerId,
-            emoji,
-            targetId,
-            timestamp: now
-        },
-        timestamp: now
-    };
+            const now = Date.now();
+            const reaction = {
+                type: 'emoji_reaction',
+                data: {
+                    playerId: connection.playerId,
+                    emoji,
+                    targetId,
+                    timestamp: now
+                },
+                timestamp: now
+            };
 
-    // Broadcast to realm
-    if(connection.realm && ctx.realms.has(connection.realm)) {
-    const realm = ctx.realms.get(connection.realm)!;
-    for (const conn of Array.from(realm.values())) {
-        ctx.send(conn.ws, reaction);
-    }
-}
+            // Broadcast to realm
+            if (connection.realm && ctx.realms.has(connection.realm)) {
+                const realm = ctx.realms.get(connection.realm)!;
+                for (const conn of Array.from(realm.values())) {
+                    ctx.send(conn.ws, reaction);
+                }
+            }
         } catch (error) {
-    console.error('Failed to handle emoji reaction:', error);
-}
+            console.error('Failed to handle emoji reaction:', error);
+        }
     }
 
     /**
      * Handle typing indicator
      */
     static handleTypingIndicator(connection: PlayerConnection, data: any, ctx: HandlerContext): void {
-    try {
-        const { isTyping } = data;
+        try {
+            const { isTyping } = data;
 
-        if(connection.realm && ctx.realms.has(connection.realm)) {
-    const realm = ctx.realms.get(connection.realm)!;
-    for (const conn of Array.from(realm.values())) {
-        if (conn.playerId !== connection.playerId) {
-            ctx.send(conn.ws, {
-                type: 'typing_indicator',
-                data: {
-                    playerId: connection.playerId,
-                    isTyping: !!isTyping
-                },
-                timestamp: Date.now()
-            });
-        }
-    }
-}
+            if (connection.realm && ctx.realms.has(connection.realm)) {
+                const realm = ctx.realms.get(connection.realm)!;
+                for (const conn of Array.from(realm.values())) {
+                    if (conn.playerId !== connection.playerId) {
+                        ctx.send(conn.ws, {
+                            type: 'typing_indicator',
+                            data: {
+                                playerId: connection.playerId,
+                                isTyping: !!isTyping
+                            },
+                            timestamp: Date.now()
+                        });
+                    }
+                }
+            }
         } catch (error) {
-    console.error('Failed to handle typing indicator:', error);
-}
+            console.error('Failed to handle typing indicator:', error);
+        }
     }
 
     /**
      * Handle mute player
      */
     static handleMutePlayer(connection: PlayerConnection, data: any, ctx: HandlerContext): void {
-    try {
-        const { targetId } = data;
+        try {
+            const { targetId } = data;
 
-        if(!targetId) return;
+            if (!targetId) return;
 
-        // Store mute in connection state
-        if(!connection.mutedPlayers) {
-    connection.mutedPlayers = new Set();
-}
-connection.mutedPlayers.add(targetId);
+            // Store mute in connection state
+            if (!connection.mutedPlayers) {
+                connection.mutedPlayers = new Set();
+            }
+            connection.mutedPlayers.add(targetId);
 
-ctx.send(connection.ws, {
-    type: 'player_muted',
-    data: { playerId: targetId },
-    timestamp: Date.now()
-});
+            ctx.send(connection.ws, {
+                type: 'player_muted',
+                data: { playerId: targetId },
+                timestamp: Date.now()
+            });
         } catch (error) {
-    console.error('Failed to mute player:', error);
-}
+            console.error('Failed to mute player:', error);
+        }
     }
 
     /**
      * Handle unmute player
      */
     static handleUnmutePlayer(connection: PlayerConnection, data: any, ctx: HandlerContext): void {
-    try {
-        const { targetId } = data;
+        try {
+            const { targetId } = data;
 
-        if(!targetId || !connection.mutedPlayers) return;
+            if (!targetId || !connection.mutedPlayers) return;
 
-    connection.mutedPlayers.delete(targetId);
+            connection.mutedPlayers.delete(targetId);
 
-    ctx.send(connection.ws, {
-        type: 'player_unmuted',
-        data: { playerId: targetId },
-        timestamp: Date.now()
-    });
-} catch (error) {
-    console.error('Failed to unmute player:', error);
-}
+            ctx.send(connection.ws, {
+                type: 'player_unmuted',
+                data: { playerId: targetId },
+                timestamp: Date.now()
+            });
+        } catch (error) {
+            console.error('Failed to unmute player:', error);
+        }
     }
 }

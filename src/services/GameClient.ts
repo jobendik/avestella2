@@ -357,7 +357,7 @@ class GameClient extends EventEmitter {
         this.send('voice_signal', {
             targetId,
             signalType,
-            signalData
+            signal: signalData
         });
     }
 

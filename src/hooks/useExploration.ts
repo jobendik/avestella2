@@ -63,7 +63,7 @@ export interface UseExplorationReturn {
   discoveredPOIs: string[];
   discoveredLandmarks: string[];
   discoveredTimeSecrets: string[];
-  
+
   // Actions
   updatePlayerPosition: (x: number, y: number) => DiscoveryEvent[];
   isPositionExplored: (x: number, y: number) => boolean;
@@ -72,7 +72,7 @@ export interface UseExplorationReturn {
   getActiveTimeSecrets: (x: number, y: number) => TimeSecret[];
   getDiscoveredPOIs: () => PointOfInterest[];
   getBiomeProgress: () => { discovered: number; total: number };
-  
+
   // Persistence
   saveExploration: () => void;
   loadExploration: () => void;
@@ -94,17 +94,17 @@ export function useExploration(playerId?: string): UseExplorationReturn {
   const currentBiomeRef = useRef<Biome | null>(null);
   const explorationPercentageRef = useRef<number>(0);
   const lastMilestoneRef = useRef<number>(0);
-  
+
   // Server sync for persistence
   const serverSync = useServerSync(playerId || 'anonymous');
-  
+
   // Sync from server when data arrives
   useEffect(() => {
     if (serverSync.playerData?.exploration) {
       const exploration = serverSync.playerData.exploration;
       discoveredBiomesRef.current = new Set(exploration.discoveredAreas || []);
       explorationPercentageRef.current = exploration.explorationPercent || 0;
-      
+
       // Load discoveries
       if (exploration.discoveries) {
         exploration.discoveries.forEach(d => {
@@ -127,7 +127,7 @@ export function useExploration(playerId?: string): UseExplorationReturn {
     // Reveal fog of war cells
     const cellsToReveal = getRevealedCells(x, y);
     let newCellsRevealed = false;
-    
+
     for (const cell of cellsToReveal) {
       if (!exploredCellsRef.current.has(cell)) {
         exploredCellsRef.current.add(cell);
@@ -138,7 +138,7 @@ export function useExploration(playerId?: string): UseExplorationReturn {
     // Update exploration percentage
     if (newCellsRevealed) {
       explorationPercentageRef.current = calculateExplorationPercentage(exploredCellsRef.current);
-      
+
       // Check for exploration milestones
       const milestones = [10, 25, 50, 75, 100];
       for (const milestone of milestones) {
@@ -149,7 +149,7 @@ export function useExploration(playerId?: string): UseExplorationReturn {
           lastMilestoneRef.current = milestone;
           const rewardKey = `explorationMilestone${milestone}` as keyof typeof DISCOVERY_REWARDS;
           const reward = DISCOVERY_REWARDS[rewardKey];
-          
+
           discoveries.push({
             type: 'milestone',
             id: `milestone_${milestone}`,
@@ -168,7 +168,7 @@ export function useExploration(playerId?: string): UseExplorationReturn {
     const biome = getBiomeAtPosition(x, y);
     if (biome) {
       currentBiomeRef.current = biome;
-      
+
       if (!discoveredBiomesRef.current.has(biome.id)) {
         discoveredBiomesRef.current.add(biome.id);
         discoveries.push({
@@ -184,22 +184,22 @@ export function useExploration(playerId?: string): UseExplorationReturn {
     const POI_DISCOVER_RADIUS = 100;
     for (const poi of POINTS_OF_INTEREST) {
       if (discoveredPOIsRef.current.has(poi.id)) continue;
-      
+
       const dx = poi.x - x;
       const dy = poi.y - y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (dist < POI_DISCOVER_RADIUS) {
         discoveredPOIsRef.current.add(poi.id);
-        
+
         const isSecret = poi.type === 'secret';
         if (isSecret) {
           discoveredSecretsRef.current.add(poi.id);
         }
-        
+
         const baseReward = isSecret ? DISCOVERY_REWARDS.secret : DISCOVERY_REWARDS.poi;
         const poiReward = poi.rewards;
-        
+
         discoveries.push({
           type: isSecret ? 'secret' : 'poi',
           id: poi.id,
@@ -217,11 +217,11 @@ export function useExploration(playerId?: string): UseExplorationReturn {
     const LANDMARK_DISCOVER_RADIUS = 150;
     for (const landmark of LANDMARKS) {
       if (discoveredLandmarksRef.current.has(landmark.id)) continue;
-      
+
       const dx = landmark.x - x;
       const dy = landmark.y - y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (dist < LANDMARK_DISCOVER_RADIUS) {
         discoveredLandmarksRef.current.add(landmark.id);
         discoveries.push({
@@ -238,11 +238,11 @@ export function useExploration(playerId?: string): UseExplorationReturn {
     for (const secret of TIME_SECRETS) {
       if (discoveredTimeSecretsRef.current.has(secret.id)) continue;
       if (!isTimeSecretActive(secret)) continue;
-      
+
       const dx = secret.x - x;
       const dy = secret.y - y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (dist < TIME_SECRET_DISCOVER_RADIUS) {
         discoveredTimeSecretsRef.current.add(secret.id);
         discoveries.push({
@@ -262,12 +262,14 @@ export function useExploration(playerId?: string): UseExplorationReturn {
     for (const discovery of discoveries) {
       serverSync.addDiscovery(discovery.id, discovery.type);
     }
-    
+
     // Update exploration percentage on server
     if (newCellsRevealed) {
       serverSync.updateExploration({
         explorationPercent: explorationPercentageRef.current,
         discoveredAreas: Array.from(discoveredBiomesRef.current),
+        x,
+        y
       });
     }
 
@@ -362,7 +364,7 @@ export function useExploration(playerId?: string): UseExplorationReturn {
     explorationPercentageRef.current = 0;
     lastMilestoneRef.current = 0;
     currentBiomeRef.current = null;
-    
+
     // Server will handle state reset
     serverSync.updateExploration({
       discoveredAreas: [],
@@ -383,7 +385,7 @@ export function useExploration(playerId?: string): UseExplorationReturn {
     discoveredPOIs: Array.from(discoveredPOIsRef.current),
     discoveredLandmarks: Array.from(discoveredLandmarksRef.current),
     discoveredTimeSecrets: Array.from(discoveredTimeSecretsRef.current),
-    
+
     // Actions
     updatePlayerPosition,
     isPositionExplored,
@@ -392,7 +394,7 @@ export function useExploration(playerId?: string): UseExplorationReturn {
     getActiveTimeSecrets,
     getDiscoveredPOIs,
     getBiomeProgress,
-    
+
     // Persistence
     saveExploration,
     loadExploration,

@@ -44,7 +44,25 @@ export const singSchema = z.object({
 
 export const pulseSchema = z.object({
     radius: z.number().min(20).max(300).optional(),
-    strength: z.number().min(0).max(1).optional()
+    strength: z.number().min(0).max(1).optional(),
+    intensity: z.number().min(0).max(1).optional(),
+    color: hexColor.optional()
+});
+
+export const collectFragmentSchema = z.object({
+    fragmentId: idField,
+    x: coordinate.optional(),
+    y: coordinate.optional()
+});
+
+// ... existing code ...
+
+export const updateExplorationSchema = z.object({
+    x: coordinate.optional(),
+    y: coordinate.optional(),
+    realm: realm.optional(),
+    explorationPercent: z.number().min(0).max(100).optional(),
+    discoveredAreas: z.array(z.string()).optional()
 });
 
 export const emoteSchema = z.object({
@@ -677,6 +695,7 @@ export const messageSchemas: Record<string, z.ZodSchema> = {
     'sing': singSchema,
     'pulse': pulseSchema,
     'emote': emoteSchema,
+    'collect_fragment': collectFragmentSchema,
     'echo': echoSchema,
     'echo_ignite': resonateEchoSchema,
     'star_lit': lightStarSchema,
