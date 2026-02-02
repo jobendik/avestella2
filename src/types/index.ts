@@ -244,6 +244,7 @@ export interface IAIAgent extends Position, Velocity {
   say?(text: string, duration?: number): void;
   state: 'wandering' | 'seeking' | 'gathering' | 'pulsing' | 'following' | 'seeking_beacon' | 'social' | 'idle';
   stateTimer: number;
+  isRemotePlayer?: boolean;
   update?(
     deltaTime: number,
     worldSize: number,

@@ -15,6 +15,7 @@ export interface GameSettings {
   musicVolume: number;
   sfxVolume: number;
   isMuted: boolean;
+  musicEnabled: boolean;
 
   // Accessibility
   reducedMotion: boolean;
@@ -42,6 +43,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   musicVolume: 0.5,
   sfxVolume: 0.8,
   isMuted: false,
+  musicEnabled: false,
 
   // Accessibility
   reducedMotion: false,
@@ -88,6 +90,7 @@ export function useSettings(playerId?: string): UseSettingsReturn {
         musicVolume: serverSync.settings?.musicVolume ?? prev.musicVolume,
         sfxVolume: serverSync.settings?.sfxVolume ?? prev.sfxVolume,
         isMuted: !serverSync.settings?.soundEnabled,
+        musicEnabled: serverSync.settings?.musicEnabled ?? prev.musicEnabled,
         reducedMotion: serverSync.settings?.reducedMotion ?? prev.reducedMotion,
         colorblindMode: (serverSync.settings?.colorblindMode as ColorblindMode) ?? prev.colorblindMode,
         highContrast: serverSync.settings?.highContrast ?? prev.highContrast,
@@ -110,7 +113,7 @@ export function useSettings(playerId?: string): UseSettingsReturn {
         musicVolume: newSettings.musicVolume,
         sfxVolume: newSettings.sfxVolume,
         soundEnabled: !newSettings.isMuted,
-        musicEnabled: !newSettings.isMuted,
+        musicEnabled: newSettings.musicEnabled,
         reducedMotion: newSettings.reducedMotion,
         colorblindMode: newSettings.colorblindMode,
         highContrast: newSettings.highContrast,
@@ -136,7 +139,7 @@ export function useSettings(playerId?: string): UseSettingsReturn {
           musicVolume: newSettings.musicVolume,
           sfxVolume: newSettings.sfxVolume,
           soundEnabled: !newSettings.isMuted,
-          musicEnabled: !newSettings.isMuted,
+          musicEnabled: newSettings.musicEnabled,
           reducedMotion: newSettings.reducedMotion,
           colorblindMode: newSettings.colorblindMode,
           highContrast: newSettings.highContrast,
@@ -159,7 +162,7 @@ export function useSettings(playerId?: string): UseSettingsReturn {
       musicVolume: DEFAULT_SETTINGS.musicVolume,
       sfxVolume: DEFAULT_SETTINGS.sfxVolume,
       soundEnabled: !DEFAULT_SETTINGS.isMuted,
-      musicEnabled: !DEFAULT_SETTINGS.isMuted,
+      musicEnabled: DEFAULT_SETTINGS.musicEnabled,
       reducedMotion: DEFAULT_SETTINGS.reducedMotion,
       colorblindMode: DEFAULT_SETTINGS.colorblindMode,
       highContrast: DEFAULT_SETTINGS.highContrast,

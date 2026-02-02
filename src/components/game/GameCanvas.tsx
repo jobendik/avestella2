@@ -42,7 +42,7 @@ export function GameCanvas(): JSX.Element {
   const animationFrameRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
 
-  const { gameState, input, audio, progression, exploration, worldEvents, darkness, pulsePatterns, companions, cosmetics, gameModes, voice } = useGame();
+  const { gameState, input, audio, progression, exploration, worldEvents, darkness, pulsePatterns, companions, cosmetics, gameModes, voice, settings } = useGame();
   const powerUps = usePowerUpsContext();
   const { constellations: activeConstellations, detectConstellations } = useConstellations();
   const { showToast, togglePanel, activePanel } = useUI();
@@ -143,6 +143,26 @@ export function GameCanvas(): JSX.Element {
     window.addEventListener('keydown', handleTabKey);
     return () => window.removeEventListener('keydown', handleTabKey);
   }, [togglePanel]);
+
+  // Listen for 'M' key to toggle music
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      if (e.key.toLowerCase() === 'm') {
+        const nextState = !settings.settings.musicEnabled;
+        settings.toggleSetting('musicEnabled');
+        audio.setMusicMuted(!nextState);
+        showToast(nextState ? 'Music On 🎵' : 'Music Off 🔇', 'info');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [settings, audio, showToast]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Game Loop
