@@ -6,6 +6,7 @@
 import { useState, useCallback } from 'react';
 import { useGameStateContext, usePulsePatternsContext, useAudioContext } from '@/contexts/GameContext';
 import { useUI } from '@/contexts/UIContext';
+import { gameClient } from '@/services/GameClient';
 
 export interface PulseInteractionState {
   isPulsing: boolean;
@@ -52,7 +53,7 @@ export function usePulseInteraction(): PulseInteractionState & PulseInteractionA
       });
 
       // ───────────────────────────────────────────────────────────────────────
-      // Bond Formation Logic
+      // Bond Formation Logic (Server-Authoritative)
       // ───────────────────────────────────────────────────────────────────────
       const INTERACTION_RADIUS = 100;
       const nearbyAgent = state.aiAgents.find(agent => {
@@ -62,6 +63,10 @@ export function usePulseInteraction(): PulseInteractionState & PulseInteractionA
       });
 
       if (nearbyAgent) {
+        // SERVER-AUTHORITATIVE: Send bond interaction to server for validation/persistence
+        gameClient.createBondInteraction(nearbyAgent.id, 'pulse');
+
+        // Optimistic UI update - local bond for immediate feedback
         const bond = formBond(nearbyAgent);
         if (bond) {
           audio.playBondFormed();

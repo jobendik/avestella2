@@ -369,7 +369,7 @@ class GameClient extends EventEmitter {
      * Update speaking state
      */
     public setSpeaking(speaking: boolean) {
-        this.send('speaking', { speaking });
+        this.send('voice_speaking', { speaking });
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
