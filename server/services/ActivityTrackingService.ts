@@ -65,21 +65,21 @@ export interface EngagementEvent {
 
 export class ActivityTrackingService extends EventEmitter {
     private static instance: ActivityTrackingService;
-    
+
     // Active sessions
     private activeSessions: Map<string, PlayerSession> = new Map();
-    
+
     // Historical metrics (in production, this would be in the database)
     private playerMetrics: Map<string, ActivityMetrics> = new Map();
-    
+
     // Recent events for real-time analytics
     private recentEvents: EngagementEvent[] = [];
     private readonly MAX_RECENT_EVENTS = 1000;
-    
+
     // Snapshots for historical analysis
     private snapshots: ActivitySnapshot[] = [];
     private readonly MAX_SNAPSHOTS = 288; // 24 hours at 5-minute intervals
-    
+
     private snapshotInterval: NodeJS.Timeout | null = null;
     private cleanupInterval: NodeJS.Timeout | null = null;
     private ready = false;
@@ -532,7 +532,7 @@ export class ActivityTrackingService extends EventEmitter {
      */
     getTopEngagedPlayers(count: number = 10): Array<{ playerId: string; score: number }> {
         const scores: Array<{ playerId: string; score: number }> = [];
-        
+
         this.playerMetrics.forEach((_, playerId) => {
             scores.push({
                 playerId,
@@ -571,7 +571,7 @@ export class ActivityTrackingService extends EventEmitter {
 
     private addEvent(event: EngagementEvent): void {
         this.recentEvents.push(event);
-        
+
         // Trim if too many
         if (this.recentEvents.length > this.MAX_RECENT_EVENTS) {
             this.recentEvents = this.recentEvents.slice(-this.MAX_RECENT_EVENTS);
@@ -659,6 +659,17 @@ export class ActivityTrackingService extends EventEmitter {
 
         this.ready = false;
         console.log('📊 ActivityTrackingService shutdown');
+    }
+    /**
+     * Track a specific activity
+     */
+    async trackActivity(playerId: string, activityType: string, _data?: any): Promise<void> {
+        this.ensurePlayerMetrics(playerId);
+        const metrics = this.playerMetrics.get(playerId);
+        if (metrics) {
+            metrics.totalActions++;
+            metrics.lastSeen = Date.now();
+        }
     }
 }
 

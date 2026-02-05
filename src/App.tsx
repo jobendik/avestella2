@@ -45,7 +45,7 @@ import { WorldMapPanel } from '@/components/ui/WorldMapPanel';
 import { AdminDashboard } from '@/pages/AdminDashboard';
 import { HintPill, HINT_MESSAGES, useHintPill } from '@/components/ui/HintPill';
 import { NetworkStatusHUD } from '@/components/ui/NetworkStatusHUD';
-import { useAudio, useSnapshot, useQuests } from '@/hooks';
+import { useSnapshot, useQuests, useSettings } from '@/hooks';
 import { useAnchoringTriggers } from '@/hooks/useAnchoringTriggers';
 import { gameClient } from '@/services/GameClient';
 
@@ -55,8 +55,8 @@ import { gameClient } from '@/services/GameClient';
 
 function AppLayout(): JSX.Element {
   const { activePanel, closePanel } = useUI();
-  const { exploration } = useGame();
-  const { startBackgroundMusic, stopBackgroundMusic, playChatChime } = useAudio();
+  const { exploration, settings, audio } = useGame();
+  const { startBackgroundMusic, stopBackgroundMusic, playChatChime } = audio;
   const { isVisible: showHint, dismiss: dismissHint } = useHintPill({ storageKey: 'aura-welcome-hint' });
   const { snapshot, isModalOpen, takeSnapshot, downloadSnapshot, closeModal, copyToClipboard, shareSnapshot } = useSnapshot();
   const { isVisible: showInviteToast, copyInviteLink, hide: hideInviteToast } = useInviteToast();
@@ -78,24 +78,35 @@ function AppLayout(): JSX.Element {
   stopMusicRef.current = stopBackgroundMusic;
 
   useEffect(() => {
-    startMusicRef.current('/music.mp3');
-    return () => stopMusicRef.current();
-  }, []); // Empty deps - only run on mount/unmount
+    // Only start music if enabled in settings
+    if (settings.settings.musicEnabled) {
+      startMusicRef.current('/music.mp3');
+    } else {
+      stopMusicRef.current(); // Explicitly stop if disabled
+    }
+    // Cleanup handled by the else or component unmount (effectively)
+    // Note: If we unmount, we probably want music to stop? 
+    // Usually AppLayout doesn't unmount, but good practice.
+    return () => {
+      // Optional: stop music on unmount? 
+      // stopMusicRef.current(); 
+    };
+  }, [settings.settings.musicEnabled]); // Re-run when setting changes
 
   // Subscribe to real network stats from GameClient
   useEffect(() => {
     const handleLatencyUpdate = (data: { latency: number }) => {
       setLatency(data.latency);
     };
-    
+
     const handleNearbyCountUpdate = (data: { count: number }) => {
       setNearbyCount(data.count);
     };
-    
+
     const handleConnected = () => {
       setIsConnected(true);
     };
-    
+
     const handleDisconnected = () => {
       setIsConnected(false);
     };

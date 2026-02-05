@@ -22,11 +22,18 @@ export class ChatHandlers {
      */
     static async handleChatMessage(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
         try {
+            console.log(`🔍 [DEBUG] handleChatMessage ENTERED for ${connection.playerId}`);
+            console.log(`🔍 [DEBUG] Payload:`, JSON.stringify(data));
+            console.log(`🔍 [DEBUG] Connection Realm: ${connection.realm}`);
+
             const { message, channel } = data;
 
             console.log(`🟠 [SERVER ChatHandler] handleChatMessage from=${connection.playerId} realm=${connection.realm}`, { message, channel });
 
-            if (!message || typeof message !== 'string') return;
+            if (!message || typeof message !== 'string') {
+                console.error(`❌ [DEBUG] Invalid message format:`, message);
+                return;
+            }
 
             // Rate limiting
             const now = Date.now();

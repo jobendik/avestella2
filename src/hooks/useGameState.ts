@@ -296,6 +296,21 @@ export function useGameState(): UseGameStateReturn {
         }));
       }
 
+      // Update beacons from server (server-authoritative beacon state)
+      if (data.beacons && Array.isArray(data.beacons)) {
+        state.beacons = data.beacons.map((b: any) => ({
+          id: b.id,
+          x: b.x,
+          y: b.y,
+          lit: b.lit,
+          charge: b.charge || 0,
+          litBy: b.litBy,
+          litAt: b.litAt,
+          permanentlyLit: b.permanentlyLit,
+          isProtected: b.isProtected
+        }));
+      }
+
       // Build combined list of aiAgents from: server bots + remote players
       // This replaces ALL local agent generation
       const hueToColor = (hue: number) => `hsl(${hue}, 70%, 60%)`;
@@ -459,6 +474,7 @@ export function useGameState(): UseGameStateReturn {
       console.log(`🟡 [useGameState] handleChatMessage agent found:`, agent?.id, agent?.name);
       if (agent) {
         agent.currentMessage = data.message;
+        agent.messageTime = Date.now();
 
         // Add floating text above the player
         state.floatingTexts.push({

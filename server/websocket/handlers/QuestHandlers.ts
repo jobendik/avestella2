@@ -209,4 +209,10 @@ export class QuestHandlers {
             console.error('Failed to get quest stats:', error);
         }
     }
+    /**
+     * Handle generic update quest
+     */
+    static async handleUpdateQuest(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
+        return this.handleUpdateQuestProgress(connection, data, ctx);
+    }
 }

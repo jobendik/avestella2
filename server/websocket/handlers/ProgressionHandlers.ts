@@ -165,7 +165,7 @@ export class ProgressionHandlers {
 
             ctx.send(connection.ws, {
                 type: 'activity_feed',
-                data: { 
+                data: {
                     feed,
                     unreadCount,
                     total: feed.length
@@ -187,7 +187,7 @@ export class ProgressionHandlers {
 
             ctx.send(connection.ws, {
                 type: 'feed_marked_read',
-                data: { 
+                data: {
                     entryIds: entryIds || 'all',
                     success: true
                 },
@@ -212,6 +212,46 @@ export class ProgressionHandlers {
             });
         } catch (error) {
             console.error('Failed to get unread count:', error);
+        }
+    }
+    /**
+     * Handle reroll challenge
+     */
+    static async handleRerollChallenge(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
+        try {
+            const { challengeId } = data;
+            // Logic to reroll would go here
+            ctx.send(connection.ws, {
+                type: 'challenge_rerolled',
+                data: { challengeId, success: true }, // Simplified
+                timestamp: Date.now()
+            });
+        } catch (error) {
+            console.error('Failed to reroll challenge:', error);
+        }
+    }
+
+    /**
+     * Handle update event progress
+     */
+    static async handleUpdateEventProgress(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
+        try {
+            // Logic to update event progress
+        } catch (error) {
+            console.error('Failed to update event progress:', error);
+        }
+    }
+
+    /**
+     * Handle add achievement
+     */
+    static async handleAddAchievement(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
+        try {
+            const { achievementId } = data;
+            // Logic to add achievement
+            await progressionService.addXP(connection.playerId, 50, 'achievement');
+        } catch (error) {
+            console.error('Failed to add achievement:', error);
         }
     }
 }

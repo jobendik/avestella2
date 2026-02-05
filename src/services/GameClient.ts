@@ -480,6 +480,63 @@ class GameClient extends EventEmitter {
     // SNAPSHOT SYSTEM METHODS
     // ═══════════════════════════════════════════════════════════════════════════
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BOND SYSTEM METHODS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Get bond with a specific player
+     */
+    public getBond(targetId: string) {
+        this.send('get_bond', { targetId });
+    }
+
+    /**
+     * Get all player's bonds
+     */
+    public getAllBonds() {
+        this.send('get_all_bonds', {});
+    }
+
+    /**
+     * Create/strengthen bond interaction with another player
+     */
+    public createBondInteraction(targetId: string, interactionType: 'proximity' | 'chat' | 'gift' | 'pulse' | 'constellation') {
+        this.send('bond_interaction', { targetId, interactionType });
+    }
+
+    /**
+     * Add a shared memory to a bond
+     */
+    public addBondMemory(targetId: string, memoryText: string) {
+        this.send('add_bond_memory', { targetId, memoryText });
+    }
+
+    /**
+     * Seal a bond with another player (both must submit a word)
+     */
+    public sealBond(targetId: string, sealWord: string) {
+        this.send('seal_bond', { targetId, sealWord });
+    }
+
+    /**
+     * Get player's star memories
+     */
+    public getStarMemories() {
+        this.send('get_star_memories', {});
+    }
+
+    /**
+     * Get realm's star memories (public stars)
+     */
+    public getRealmStars(realmId?: string, limit: number = 100) {
+        this.send('get_realm_stars', { realmId, limit });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SNAPSHOT SYSTEM METHODS (Continued)
+    // ═══════════════════════════════════════════════════════════════════════════
+
     /**
      * Send snapshot metadata to server
      */

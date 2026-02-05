@@ -35,6 +35,7 @@ import { tagGameService } from '../services/TagGameService.js';
 import { notificationService } from '../services/NotificationService.js';
 import { activityTrackingService } from '../services/ActivityTrackingService.js';
 import { friendshipService } from '../services/FriendshipService.js';
+import { beaconService } from '../services/BeaconService.js';
 import { SHARED_CONFIG, getLevel } from '../common/constants.js';
 
 // Types
@@ -1801,6 +1802,19 @@ export class WebSocketHandler {
                 config: p.config
             }));
 
+        // Gather beacons for this realm from BeaconService
+        const beaconsArray = beaconService.getBeaconsInRealm(realm).map(b => ({
+            id: b.id,
+            x: Math.round(b.x),
+            y: Math.round(b.y),
+            lit: b.charge >= 50, // lightingThreshold from BeaconService config
+            charge: b.charge || 0,
+            litBy: b.litBy,
+            litAt: b.litAt,
+            permanentlyLit: b.permanentlyLit,
+            isProtected: b.isProtected
+        }));
+
         const worldState = {
             type: 'world_state',
             data: {
@@ -1809,6 +1823,7 @@ export class WebSocketHandler {
                 echoes,
                 fragments: fragmentsArray,
                 powerUps: powerUpsArray,
+                beacons: beaconsArray,
                 nebulae: this.nebulae,
                 stars: this.stars,
                 litStars: Array.from(this.litStars),

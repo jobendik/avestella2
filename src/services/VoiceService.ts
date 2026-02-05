@@ -187,6 +187,12 @@ export class VoiceService {
 
         pc.ontrack = (event) => {
             console.log(`🎙️ Received audio track from ${peerId}`);
+
+            // Ensure audio context is running (fixes silent audio on some browsers)
+            if (this.audioContext && this.audioContext.state === 'suspended') {
+                this.audioContext.resume().catch(e => console.warn('Failed to resume AudioContext:', e));
+            }
+
             // Clean up existing audio element if any
             const existingAudio = this.audioElements.get(peerId);
             if (existingAudio) {
@@ -266,6 +272,12 @@ export class VoiceService {
 
                 pc.ontrack = (event) => {
                     console.log(`🎙️ Received audio track from ${from} (Answerer)`);
+
+                    // Ensure audio context is running (fixes silent audio)
+                    if (this.audioContext && this.audioContext.state === 'suspended') {
+                        this.audioContext.resume().catch(e => console.warn('Failed to resume AudioContext:', e));
+                    }
+
                     // Clean up existing audio element if any
                     const existingAudio = this.audioElements.get(from);
                     if (existingAudio) {

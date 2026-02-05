@@ -213,10 +213,16 @@ export interface PlayerProgress {
   totalBonds: number;
   totalBeacons: number;
   playTime: number;
+  lastModified?: number; // Server timestamp for authoritative merge
 }
 
 export function savePlayerProgress(progress: PlayerProgress): boolean {
-  return saveToStorage(STORAGE_KEYS.PLAYER_DATA, progress);
+  // Always add a timestamp when saving locally
+  const timestampedProgress = {
+    ...progress,
+    lastModified: Date.now()
+  };
+  return saveToStorage(STORAGE_KEYS.PLAYER_DATA, timestampedProgress);
 }
 
 /**
@@ -231,6 +237,7 @@ export function loadPlayerProgress(): PlayerProgress {
     totalBonds: 0,
     totalBeacons: 0,
     playTime: 0,
+    lastModified: 0,
   });
 }
 
@@ -281,6 +288,8 @@ export function importData(jsonString: string): boolean {
 
 /**
  * Merge progress data (for syncing between devices)
+ * SECURITY: Server data is always authoritative. Local data is only used as fallback
+ * when server is unavailable or to fill in missing fields.
  */
 export function mergeProgress(
   local: PlayerProgress | null,
@@ -294,20 +303,48 @@ export function mergeProgress(
     totalBonds: 0,
     totalBeacons: 0,
     playTime: 0,
+    lastModified: 0,
   };
 
+  if (!local && !remote) return defaultProgress;
   if (!local) return remote || defaultProgress;
   if (!remote) return local;
 
-  // Merge strategy: take the higher values
+  const localTs = local.lastModified || 0;
+  const remoteTs = remote.lastModified || 0;
+
+  // Log significant differences for debugging potential exploitation
+  const xpDiff = Math.abs((local.xp || 0) - (remote.xp || 0));
+  const stardustDiff = Math.abs((local.stardust || 0) - (remote.stardust || 0));
+
+  if (xpDiff > 1000 || stardustDiff > 500) {
+    console.warn('[Storage] Large discrepancy detected during merge:', {
+      xpDiff,
+      stardustDiff,
+      localTs,
+      remoteTs,
+      preferring: remoteTs >= localTs ? 'remote (server)' : 'local'
+    });
+  }
+
+  // SERVER DATA IS AUTHORITATIVE: prefer remote (server) data when available
+  // Only use local data if it's more recent AND server data is stale/missing
+  if (remoteTs >= localTs) {
+    // Server is newer or equal - use server data entirely
+    return { ...remote };
+  }
+
+  // Local is newer (offline play) - still prefer server for critical values
+  // but allow local playTime accumulation
   return {
-    level: Math.max(local.level, remote.level),
-    xp: Math.max(local.xp, remote.xp),
-    stardust: Math.max(local.stardust, remote.stardust),
-    totalFragments: Math.max(local.totalFragments, remote.totalFragments),
-    totalBonds: Math.max(local.totalBonds, remote.totalBonds),
-    totalBeacons: Math.max(local.totalBeacons, remote.totalBeacons),
-    playTime: Math.max(local.playTime, remote.playTime),
+    level: remote.level || local.level,
+    xp: remote.xp || local.xp,  // Server-authoritative for XP
+    stardust: remote.stardust || local.stardust, // Server-authoritative for stardust
+    totalFragments: remote.totalFragments || local.totalFragments,
+    totalBonds: remote.totalBonds || local.totalBonds,
+    totalBeacons: remote.totalBeacons || local.totalBeacons,
+    playTime: Math.max(local.playTime, remote.playTime), // Allow playTime to accumulate
+    lastModified: Math.max(localTs, remoteTs),
   };
 }
 

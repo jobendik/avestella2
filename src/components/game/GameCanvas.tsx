@@ -58,6 +58,8 @@ export function GameCanvas(): JSX.Element {
   const companionsRef = useRef(companions);
   const cosmeticsRef = useRef(cosmetics);
   const gameModesRef = useRef(gameModes);
+  const settingsRef = useRef(settings);
+  const showToastRef = useRef(showToast);
 
   // Hover tooltip state
   const [hoveredPlayer, setHoveredPlayer] = useState<HoveredPlayer | null>(null);
@@ -76,7 +78,9 @@ export function GameCanvas(): JSX.Element {
     companionsRef.current = companions;
     cosmeticsRef.current = cosmetics;
     gameModesRef.current = gameModes;
-  }, [input, progression, audio, exploration, worldEvents, darkness, pulsePatterns, companions, cosmetics, gameModes]);
+    settingsRef.current = settings;
+    showToastRef.current = showToast;
+  }, [input, progression, audio, exploration, worldEvents, darkness, pulsePatterns, companions, cosmetics, gameModes, settings, showToast]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Interaction Logic
@@ -154,15 +158,28 @@ export function GameCanvas(): JSX.Element {
       }
 
       if (e.key.toLowerCase() === 'm') {
-        const nextState = !settings.settings.musicEnabled;
-        settings.toggleSetting('musicEnabled');
-        audio.setMusicMuted(!nextState);
-        showToast(nextState ? 'Music On 🎵' : 'Music Off 🔇', 'info');
+        const currentSettings = settingsRef.current;
+        if (!currentSettings) return;
+
+        const isCurrentlyEnabled = currentSettings.settings.musicEnabled;
+        const nextState = !isCurrentlyEnabled;
+
+        console.log('[GameCanvas] M key pressed. Toggling music to:', nextState ? 'ON' : 'OFF');
+
+        // Toggle setting
+        currentSettings.toggleSetting('musicEnabled');
+
+        // Directly update audio engine state to ensure immediate effect
+        audioRef.current.setMusicMuted(!nextState);
+
+        // Feedback
+        showToastRef.current(nextState ? 'Music On 🎵' : 'Music Off 🔇', 'info');
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [settings, audio, showToast]);
+  }, []); // Empty dependency array ensures listener is only added once
 
   // ─────────────────────────────────────────────────────────────────────────
   // Game Loop

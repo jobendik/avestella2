@@ -6,6 +6,7 @@
 
 import { WebSocket } from 'ws';
 import { gameModeAnalyticsService, IPlayerPreferences } from '../../services/GameModeAnalyticsService.js';
+import { activityTrackingService } from '../../services/ActivityTrackingService.js';
 
 interface ExtendedWebSocket extends WebSocket {
     playerId?: string;
@@ -311,6 +312,16 @@ export async function handleGetGlobalAmbientStats(ws: ExtendedWebSocket): Promis
     }
 }
 
+
+export async function handleTrackStat(ws: ExtendedWebSocket, data: { stat: string; amount?: number }): Promise<void> {
+    if (!ws.playerId) return;
+    try {
+        await activityTrackingService.trackActivity(ws.playerId, data.stat as any, { amount: data.amount || 1 });
+    } catch (error: any) {
+        console.error('Failed to track stat:', error);
+    }
+}
+
 export default {
     handleGetPreferences,
     handleUpdatePreferences,
@@ -322,5 +333,6 @@ export default {
     handleEndAmbientMode,
     handleGetAmbientStats,
     handleGetGlobalGameModeStats,
-    handleGetGlobalAmbientStats
+    handleGetGlobalAmbientStats,
+    handleTrackStat
 };

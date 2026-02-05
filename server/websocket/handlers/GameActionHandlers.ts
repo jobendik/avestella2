@@ -5,6 +5,7 @@
 import type { PlayerConnection, HandlerContext, Echo } from '../types.js';
 import { progressionService } from '../../services/ProgressionService.js';
 import { resonanceService } from '../../services/ResonanceService.js';
+import { beaconService } from '../../services/BeaconService.js';
 
 export class GameActionHandlers {
     /**
@@ -629,4 +630,68 @@ export class GameActionHandlers {
             console.error('Failed to get pulse patterns:', error);
         }
     }
+    /**
+     * Handle light beacon interaction
+     */
+    static async handleLightBeacon(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
+        try {
+            const { beaconId } = data;
+
+            if (!beaconId) {
+                ctx.sendError(connection, 'Missing beaconId');
+                return;
+            }
+
+            // Use beaconService to light the beacon with server-side validation
+            const result = await beaconService.lightBeacon(
+                connection.playerId,
+                beaconId,
+                { x: connection.x, y: connection.y }
+            );
+
+            if (!result.success) {
+                ctx.sendError(connection, result.error || 'Failed to light beacon');
+                return;
+            }
+
+            const now = Date.now();
+
+            // Send success to the player who lit it
+            ctx.send(connection.ws, {
+                type: 'beacon_lit',
+                data: {
+                    beaconId,
+                    playerId: connection.playerId,
+                    beacon: result.beacon,
+                    xpAwarded: result.xpAwarded || 10
+                },
+                timestamp: now
+            });
+
+            // Grant XP via progressionService for consistency
+            await progressionService.addXP(connection.playerId, result.xpAwarded || 10, 'beacon');
+
+            // Broadcast beacon state update to entire realm
+            if (connection.realm) {
+                ctx.broadcastToRealm(connection.realm, {
+                    type: 'beacon_state_update',
+                    data: {
+                        beaconId,
+                        beacon: result.beacon,
+                        litBy: connection.playerId,
+                        litByName: connection.playerName,
+                        x: connection.x,
+                        y: connection.y
+                    },
+                    timestamp: now
+                });
+            }
+
+            console.log(`🔦 Beacon ${beaconId} lit by ${connection.playerName} (${connection.playerId})`);
+        } catch (error) {
+            console.error('Failed to handle light beacon:', error);
+            ctx.sendError(connection, 'Server error while lighting beacon');
+        }
+    }
 }
+

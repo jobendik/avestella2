@@ -67,7 +67,7 @@ export function useAudio(): UseAudioReturn {
   const audioEngine = useRef(getAudioEngine());
   const [isInitialized, setIsInitialized] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [isMusicMuted, setIsMusicMuted] = useState(false);
+  const [isMusicMuted, setIsMusicMuted] = useState(true); // Default to MUTED (Music Off)
   const [sfxVolume, setSFXVolumeState] = useState(0.5);
   const [musicVolume, setMusicVolumeState] = useState(0.3);
 
@@ -80,8 +80,13 @@ export function useAudio(): UseAudioReturn {
       if (typeof (savedSettings as any).soundEnabled === 'boolean') {
         setIsMuted(!(savedSettings as any).soundEnabled);
       }
+
+      // If setting exists, use it. If not, default to FALSE (Music Off -> Muted = true)
       if (typeof (savedSettings as any).musicEnabled === 'boolean') {
         setIsMusicMuted(!(savedSettings as any).musicEnabled);
+      } else {
+        // Explicitly ensure default is muted if not saved
+        setIsMusicMuted(true);
       }
     }
   }, []);
