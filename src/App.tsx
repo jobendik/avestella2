@@ -48,6 +48,8 @@ import { NetworkStatusHUD } from '@/components/ui/NetworkStatusHUD';
 import { useSnapshot, useQuests, useSettings } from '@/hooks';
 import { useAnchoringTriggers } from '@/hooks/useAnchoringTriggers';
 import { gameClient } from '@/services/GameClient';
+import { useMobile } from '@/hooks/useMobile';
+import { Joystick } from '@/components/controls/Joystick';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main App Layout
@@ -61,6 +63,9 @@ function AppLayout(): JSX.Element {
   const { snapshot, isModalOpen, takeSnapshot, downloadSnapshot, closeModal, copyToClipboard, shareSnapshot } = useSnapshot();
   const { isVisible: showInviteToast, copyInviteLink, hide: hideInviteToast } = useInviteToast();
   const { hasUnclaimedRewards, unclaimedDailyCount, unclaimedWeeklyCount, trackProgress } = useQuests();
+
+  // Mobile detection for responsive layout
+  const { isMobile, isPortrait } = useMobile();
 
   // Anchoring system - watches for emotional peaks to prompt account creation
   useAnchoringTriggers();
@@ -130,22 +135,25 @@ function AppLayout(): JSX.Element {
       <GameCanvas />
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          LEFT SIDE - Realm Selector (vertical, centered)
+          LEFT SIDE - Realm Selector (vertical on desktop, hidden on mobile - handled in component)
          ═══════════════════════════════════════════════════════════════════════ */}
-      <ConnectedRealmSelector visible={true} />
+      <ConnectedRealmSelector visible={true} isMobile={isMobile} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
           TOP - HUD with player info, resources, menu
          ═══════════════════════════════════════════════════════════════════════ */}
-      <HUD />
+      <HUD isMobile={isMobile} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          BOTTOM LEFT CORNER - Minimap only
+          MINIMAP - Bottom-left on desktop, top-right on mobile
          ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="fixed bottom-4 left-20 z-50 pointer-events-auto">
+      <div className={`fixed z-50 pointer-events-auto ${isMobile
+          ? 'top-16 right-2'
+          : 'bottom-4 left-20'
+        }`}>
         <Minimap
-          size={140}
-          position="bottom-left"
+          size={isMobile ? 80 : 140}
+          position={isMobile ? "top-right" : "bottom-left"}
           showFog={true}
           showBiomes={true}
           showBeacons={true}
@@ -156,17 +164,32 @@ function AppLayout(): JSX.Element {
 
       {/* ═══════════════════════════════════════════════════════════════════════
           BOTTOM RIGHT CORNER - Stats (exploration %, network, players)
+          Hidden on mobile - network info shown in compact HUD
          ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="fixed bottom-4 right-4 flex items-center gap-3 px-3 py-2 bg-black/50 backdrop-blur-md rounded-lg border border-white/10 z-50 pointer-events-auto">
-        <NetworkStatusHUD
-          latency={latency}
-          isConnected={isConnected}
-          nearbyCount={nearbyCount}
-          visible={true}
-          showCluster={false}
-          explorationPercent={exploration.explorationPercentage}
+      {!isMobile && (
+        <div className="fixed bottom-4 right-4 flex items-center gap-3 px-3 py-2 bg-black/50 backdrop-blur-md rounded-lg border border-white/10 z-50 pointer-events-auto">
+          <NetworkStatusHUD
+            latency={latency}
+            isConnected={isConnected}
+            nearbyCount={nearbyCount}
+            visible={true}
+            showCluster={false}
+            explorationPercent={exploration.explorationPercentage}
+          />
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          MOBILE JOYSTICK - Touch control for movement
+         ═══════════════════════════════════════════════════════════════════════ */}
+      {isMobile && (
+        <Joystick
+          position="left"
+          size={isPortrait ? 100 : 90}
+          baseColor="rgba(255, 255, 255, 0.12)"
+          stickColor="rgba(255, 255, 255, 0.4)"
         />
-      </div>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════════════
           BOTTOM CENTER - Instant Chat (ENTER to type)

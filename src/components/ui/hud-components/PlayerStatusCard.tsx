@@ -7,7 +7,11 @@ import React from 'react';
 import { Users, Heart, Star, Flame } from 'lucide-react';
 import { useProgressionContext, useSocialContext, useGameStateContext } from '@/contexts/GameContext';
 
-export function PlayerStatusCard(): JSX.Element {
+interface PlayerStatusCardProps {
+  isMobile?: boolean;
+}
+
+export function PlayerStatusCard({ isMobile = false }: PlayerStatusCardProps): JSX.Element {
   const { state: progressionState } = useProgressionContext();
   const { friends } = useSocialContext();
   const { gameState } = useGameStateContext();
@@ -15,6 +19,26 @@ export function PlayerStatusCard(): JSX.Element {
   const bondsCount = gameState.current?.bonds?.length || 0;
   const starMemoriesCount = gameState.current?.bonds?.filter((b: any) => b.sealed)?.length || 0;
 
+  // Mobile compact layout
+  if (isMobile) {
+    return (
+      <div className="flex items-center gap-2">
+        {/* Compact Level Badge */}
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-xs font-bold text-black border border-white/20 shadow-[0_0_10px_rgba(255,215,0,0.3)]">
+          {progressionState.level}
+        </div>
+        {/* XP Bar only */}
+        <div className="bg-black/40 h-1 w-16 rounded-full overflow-hidden border border-white/10">
+          <div
+            className="h-full bg-gradient-to-r from-yellow-500 to-amber-300"
+            style={{ width: `${(progressionState.xp / progressionState.xpToNextLevel) * 100}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop full layout
   return (
     <div className="flex items-center gap-3">
       {/* Level Badge */}

@@ -289,7 +289,46 @@ The pulse interaction still creates bonds locally via `formBond(nearbyAgent)` in
 
 **Impact:** Low - Bond strength updates already go through server. Only initial bond visual is client-side.
 
-### 🟢 Issue 3: Movement Validation (LOW PRIORITY)
+### � Issue 5: Achievement Validation is Client-Side (LOW-MEDIUM)
+
+**Status:** PARTIAL - Client evaluates conditions, server blindly accepts
+
+**Flow Analysis:**
+1. **Client** (`src/game/achievements.ts` line 411): `checkAchievements()` evaluates conditions locally
+2. **Client** (`src/hooks/useServerSync.ts` line 371): Calls `gameClient.addAchievement(achievementId)`
+3. **Server** (`server/websocket/handlers/ProgressionHandlers.ts` line 248): `handleAddAchievement()` only adds XP, doesn't validate
+
+```typescript
+// Server handler - NO VALIDATION of achievement conditions
+static async handleAddAchievement(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
+    const { achievementId } = data;
+    await progressionService.addXP(connection.playerId, 50, 'achievement');
+    // ⚠️ Achievement is added without checking if player actually earned it
+}
+```
+
+**What Exists but Isn't Used:** The server has `AchievementService.updateProgress()` (lines 462-538) which CAN validate achievement conditions, but it's only exposed via REST API (`gameRoutes.ts`), not called by the WebSocket handler.
+
+**Impact:** Low-Medium - Client could technically claim any achievement. Mitigated by the fact that `GameStats` come from the server, making exploitation require more effort. For hardening, the WebSocket handler should call `achievementService.updateProgress()` to validate unlock conditions.
+
+### ✅ RESOLVED: Issue 6 - Voice Chat Message Type Mismatch
+
+**Status:** FIXED ✅ (February 5, 2026)
+
+**Problem:** Speaking state wasn't broadcasting due to message type mismatch:
+- **Client** (`GameClient.ts`): Sent `'speaking'`
+- **Server** (`WebSocketHandler.ts`): Expected `'voice_speaking'`
+
+**Fix Applied:** Updated `GameClient.setSpeaking()` to send `'voice_speaking'`:
+
+```typescript
+// src/services/GameClient.ts - Line 371
+public setSpeaking(speaking: boolean) {
+    this.send('voice_speaking', { speaking });  // ✅ Fixed: was 'speaking'
+}
+```
+
+### �🟢 Issue 3: Movement Validation (LOW PRIORITY)
 
 **Status:** Not implemented, optional enhancement
 
@@ -391,6 +430,12 @@ Server-timestamp authority with exploitation logging in `storage.ts`.
 
 ### ✅ COMPLETED: Bond API Methods in GameClient
 Seven methods for bond operations now exist in `GameClient.ts`.
+
+### ✅ COMPLETED: Voice Chat Message Type Fix
+Fixed `GameClient.setSpeaking()` to send `'voice_speaking'` instead of `'speaking'`.
+
+### 🟡 Recommended: Server-Side Achievement Validation (Medium Priority)
+Modify `ProgressionHandlers.handleAddAchievement()` to call `achievementService.updateProgress()` for validation instead of blindly accepting achievement claims.
 
 ### 🟢 Optional: Wire Bond API into Pulse Flow (Low Priority)
 The `usePulseInteraction.ts` could call `gameClient.createBondInteraction()` instead of local `formBond()`.

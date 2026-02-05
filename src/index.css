@@ -246,3 +246,39 @@ body {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Mobile Optimizations
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Mobile safe areas for notched devices */
+.mobile-safe-area {
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Touch target sizing */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Prevent text selection on game UI */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Landscape mode optimizations */
+@media (max-height: 500px) and (orientation: landscape) {
+  .landscape-hidden {
+    display: none !important;
+  }
+  
+  .landscape-compact {
+    transform: scale(0.8);
+    transform-origin: bottom center;
+  }
+}

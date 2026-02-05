@@ -7,11 +7,12 @@ import React, { useState } from 'react';
 import {
   Users, Heart, Trophy, Award, Gift, Shield, Target, Book, Scroll,
   Settings as SettingsIcon, ShoppingBag, Dog, Image, ChevronDown, Globe,
-  MessageSquarePlus, Anchor, Sparkles
+  MessageSquarePlus, Anchor, Sparkles, Menu, X
 } from 'lucide-react';
 import { useSocialContext, useDailyChallengesContext } from '@/contexts/GameContext';
 import { useUI } from '@/contexts/UIContext';
 import { useAnchoringContext } from '@/contexts/AnchoringContext';
+import { StatsDisplay } from './StatsDisplay';
 
 interface MenuItemProps {
   icon: React.ReactNode;
@@ -107,7 +108,12 @@ function MenuDropdown({ label, icon, iconColor, children, badge }: MenuDropdownP
   );
 }
 
-export function MenuBar(): JSX.Element {
+interface MenuBarProps {
+  isMobile?: boolean;
+}
+
+export function MenuBar({ isMobile = false }: MenuBarProps): JSX.Element {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { friends, friendRequests, activeEvent, getUnreadCount, guild } = useSocialContext();
   const { completedToday } = useDailyChallengesContext();
   const { togglePanel } = useUI();
@@ -115,7 +121,94 @@ export function MenuBar(): JSX.Element {
   const unreadMessageCount = getUnreadCount();
   const socialBadge = unreadMessageCount > 0 ? String(unreadMessageCount) : friendRequests.length > 0 ? String(friendRequests.length) : undefined;
   const challengeBadge = completedToday < 3 ? String(3 - completedToday) : undefined;
+  const hasBadge = socialBadge || challengeBadge;
 
+  const handleMenuItemClick = (panel: string) => {
+    togglePanel(panel);
+    setMobileMenuOpen(false);
+  };
+
+  // Mobile layout: single hamburger button with full-screen drawer
+  if (isMobile) {
+    return (
+      <>
+        {/* Hamburger button */}
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="relative w-8 h-8 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors"
+        >
+          <Menu size={16} />
+          {hasBadge && (
+            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
+          )}
+        </button>
+
+        {/* Full-screen drawer */}
+        {mobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/80 z-[100]"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            {/* Drawer */}
+            <div className="fixed top-0 right-0 bottom-0 w-64 bg-black/95 backdrop-blur-xl border-l border-white/10 z-[101] p-4 overflow-y-auto">
+              {/* Close button */}
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+
+              <h2 className="text-white/80 font-semibold text-sm mb-4 mt-1">Menu</h2>
+
+              {/* Status Section (Mobile Only) */}
+              <div className="mb-6 p-3 bg-white/5 rounded-xl border border-white/5">
+                <div className="text-white/40 text-xs uppercase mb-2">Status</div>
+                <StatsDisplay />
+              </div>
+
+              {/* Social Section */}
+              <div className="mb-4">
+                <div className="text-white/40 text-xs uppercase mb-2">Social</div>
+                <MenuItem icon={<Globe size={14} className="text-cyan-400" />} label="Cosmos" onClick={() => handleMenuItemClick('cosmos')} />
+                <MenuItem icon={<Users size={14} className="text-cyan-400" />} label="Friends" onClick={() => handleMenuItemClick('friends')} badge={socialBadge} />
+                <MenuItem icon={<Shield size={14} className="text-emerald-400" />} label="Constellations" onClick={() => handleMenuItemClick('guild')} />
+              </div>
+
+              {/* Progress Section */}
+              <div className="mb-4">
+                <div className="text-white/40 text-xs uppercase mb-2">Progress</div>
+                <MenuItem icon={<Scroll size={14} className="text-purple-400" />} label="Quests" onClick={() => handleMenuItemClick('quests')} />
+                <MenuItem icon={<Target size={14} className="text-green-400" />} label="Challenges" onClick={() => handleMenuItemClick('challenges')} badge={challengeBadge} />
+                <MenuItem icon={<Trophy size={14} className="text-yellow-400" />} label="Achievements" onClick={() => handleMenuItemClick('achievements')} />
+                <MenuItem icon={<Award size={14} className="text-blue-400" />} label="Leaderboard" onClick={() => handleMenuItemClick('leaderboard')} />
+              </div>
+
+              {/* Collection Section */}
+              <div className="mb-4">
+                <div className="text-white/40 text-xs uppercase mb-2">Collection</div>
+                <MenuItem icon={<ShoppingBag size={14} className="text-purple-400" />} label="Shop" onClick={() => handleMenuItemClick('shop')} />
+                <MenuItem icon={<Dog size={14} className="text-pink-400" />} label="Companions" onClick={() => handleMenuItemClick('companions')} />
+                <MenuItem icon={<Image size={14} className="text-indigo-400" />} label="Gallery" onClick={() => handleMenuItemClick('gallery')} />
+              </div>
+
+              {/* More Section */}
+              <div>
+                <div className="text-white/40 text-xs uppercase mb-2">More</div>
+                <MenuItem icon={<Gift size={14} className="text-orange-400" />} label="Daily Rewards" onClick={() => handleMenuItemClick('dailyRewards')} />
+                <AnchorMenuItem />
+                <MenuItem icon={<SettingsIcon size={14} className="text-white/60" />} label="Settings" onClick={() => handleMenuItemClick('settings')} />
+              </div>
+            </div>
+          </>
+        )}
+      </>
+    );
+  }
+
+  // Desktop layout: dropdown menus
   return (
     <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-1 rounded-xl border border-white/10 shadow-lg">
       {/* Social Group */}

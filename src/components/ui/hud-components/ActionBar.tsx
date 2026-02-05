@@ -17,14 +17,16 @@ interface QuickActionProps {
   onClick: () => void;
   hoverColor: string;
   label?: string;
+  size?: number;
 }
 
-function QuickAction({ icon, onClick, hoverColor, label }: QuickActionProps): JSX.Element {
+function QuickAction({ icon, onClick, hoverColor, label, size = 40 }: QuickActionProps): JSX.Element {
   return (
     <div className="flex flex-col items-center gap-1">
       <button
         onClick={onClick}
-        className={`w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/60 ${hoverColor} transition-all shadow-lg active:scale-95`}
+        style={{ width: size, height: size }}
+        className={`rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/60 ${hoverColor} transition-all shadow-lg active:scale-95`}
       >
         {icon}
       </button>
@@ -33,7 +35,11 @@ function QuickAction({ icon, onClick, hoverColor, label }: QuickActionProps): JS
   );
 }
 
-export function ActionBar(): JSX.Element {
+interface ActionBarProps {
+  isMobile?: boolean;
+}
+
+export function ActionBar({ isMobile = false }: ActionBarProps): JSX.Element {
   const [showQuickChat, setShowQuickChat] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const { sendLightSignal, sendSignalAtPosition } = useSignals();
@@ -48,7 +54,6 @@ export function ActionBar(): JSX.Element {
     setIsCapturing(true);
 
     try {
-      // Find the game canvas element
       const canvas = document.querySelector('canvas') as HTMLCanvasElement;
 
       if (!canvas) {
@@ -75,10 +80,8 @@ export function ActionBar(): JSX.Element {
         document.head.appendChild(style);
       }
 
-      // Capture the canvas
       const dataUrl = canvas.toDataURL('image/png');
 
-      // Get current game stats for the screenshot
       const current = gameState.current;
       const stats = {
         lightLevel: current ? Math.floor(current.playerRadius) : 0,
@@ -89,10 +92,8 @@ export function ActionBar(): JSX.Element {
         tier: 1,
       };
 
-      // Add to gallery
       addToGallery(dataUrl, stats);
 
-      // Clean up flash effect
       setTimeout(() => {
         flash.remove();
       }, 300);
@@ -119,6 +120,46 @@ export function ActionBar(): JSX.Element {
     setShowQuickChat(false);
   };
 
+  // Mobile layout: simplified, moved up for joystick
+  if (isMobile) {
+    return (
+      <>
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 pointer-events-auto">
+          <div className="flex items-end gap-2">
+            {/* Primary Actions (Pulse & Voice) - compact */}
+            <div className="flex items-end gap-2 bg-black/40 backdrop-blur-md rounded-2xl px-3 py-2 border border-white/10 shadow-2xl">
+              <PulseButton />
+              <VoiceButton />
+            </div>
+
+            {/* Essential secondary actions */}
+            <QuickAction
+              icon={<MessageCircle size={14} />}
+              onClick={() => setShowQuickChat(!showQuickChat)}
+              hoverColor="hover:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/50"
+              size={34}
+            />
+            <QuickAction
+              icon={<Camera size={14} />}
+              onClick={captureScreenshot}
+              hoverColor="hover:text-pink-400 hover:bg-pink-500/10 hover:border-pink-500/50"
+              size={34}
+            />
+          </div>
+        </div>
+
+        {showQuickChat && (
+          <QuickChatWheel
+            isOpen={showQuickChat}
+            onClose={() => setShowQuickChat(false)}
+            onSelect={handleQuickChatSelect}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Desktop layout: full action bar
   return (
     <>
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-auto">

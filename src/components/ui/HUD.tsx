@@ -24,64 +24,76 @@ import { RealmTransition } from './RealmTransition';
 import { ConstellationMenu } from './ConstellationMenu';
 import { TutorialOverlay } from './TutorialOverlay';
 
-export function HUD(): JSX.Element | null {
+interface HUDProps {
+  isMobile?: boolean;
+}
+
+export function HUD({ isMobile = false }: HUDProps): JSX.Element | null {
   const { isHUDVisible } = useUI();
 
   if (!isHUDVisible) return null;
 
+  // Mobile layout: more compact, repositioned elements
+  if (isMobile) {
+    return (
+      <div className="fixed inset-0 pointer-events-none z-10">
+        {/* TOP BAR - Compact player info + menu (mobile) */}
+        <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-auto">
+          {/* Left: Compact Player Info */}
+          <div className="flex items-center gap-2 scale-90 origin-left">
+            <PlayerStatusCard isMobile={true} />
+          </div>
+
+          {/* Right: Compact Menu */}
+          <div className="flex items-center gap-1 scale-90 origin-right">
+            <ResourceBar isMobile={true} />
+            <MenuBar isMobile={true} />
+          </div>
+        </div>
+
+        {/* BOTTOM CENTER - Action Bar (moved up for joystick) */}
+        <ActionBar isMobile={true} />
+
+        {/* Floating Panels & Overlays */}
+        <SelectedEntityPanel />
+        <ChatInterface />
+        <ConstellationMenu />
+        <DebugOverlay />
+        <RealmTransition />
+        <TutorialOverlay />
+      </div>
+    );
+  }
+
+  // Desktop layout: original positioning
   return (
     <div className="fixed inset-0 pointer-events-none z-10">
-      {/* ────────────────────────────────────────────────────────────────────────
-          TOP LEFT - Player Status & Stats
-         ──────────────────────────────────────────────────────────────────────── */}
+      {/* TOP LEFT - Player Status & Stats */}
       <div className="absolute top-4 left-4 pointer-events-auto">
-        {/* Player Info */}
         <PlayerStatusCard />
-
-        {/* Stats Display (fragments, light, nearby, ladder) */}
         <div className="mt-3">
           <StatsDisplay />
         </div>
-
-        {/* Mode Indicators */}
         <div className="mt-3">
           <ModeIndicators />
         </div>
       </div>
 
-      {/* ────────────────────────────────────────────────────────────────────────
-          TOP RIGHT - Resources & Menu
-         ──────────────────────────────────────────────────────────────────────── */}
+      {/* TOP RIGHT - Resources & Menu */}
       <div className="absolute top-4 right-4 flex items-center gap-3 pointer-events-auto">
         <ResourceBar />
         <MenuBar />
       </div>
 
-      {/* ────────────────────────────────────────────────────────────────────────
-          BOTTOM CENTER - Unified Action Bar
-         ──────────────────────────────────────────────────────────────────────── */}
+      {/* BOTTOM CENTER - Unified Action Bar */}
       <ActionBar />
 
-      {/* ────────────────────────────────────────────────────────────────────────
-          Floating Panels & Overlays
-         ──────────────────────────────────────────────────────────────────────── */}
+      {/* Floating Panels & Overlays */}
       <SelectedEntityPanel />
       <ChatInterface />
       <ConstellationMenu />
-
-      {/* ────────────────────────────────────────────────────────────────────────
-          Debug Overlay
-         ──────────────────────────────────────────────────────────────────────── */}
       <DebugOverlay />
-
-      {/* ────────────────────────────────────────────────────────────────────────
-          Realm Transition Overlay
-         ──────────────────────────────────────────────────────────────────────── */}
       <RealmTransition />
-
-      {/* ────────────────────────────────────────────────────────────────────────
-          Tutorial Overlay
-         ──────────────────────────────────────────────────────────────────────── */}
       <TutorialOverlay />
     </div>
   );

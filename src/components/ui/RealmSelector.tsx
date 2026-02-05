@@ -22,6 +22,8 @@ export interface RealmSelectorProps {
   onRealmChange?: (realmId: RealmId) => void;
   /** Whether to show the selector */
   visible?: boolean;
+  /** Mobile mode flag */
+  isMobile?: boolean;
 }
 
 // ============================================================================
@@ -40,6 +42,20 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 100,
     pointerEvents: 'auto',
   },
+  containerMobile: {
+    position: 'fixed',
+    left: '12px',
+    top: '56px', // Below compact HUD
+    display: 'flex',
+    flexDirection: 'row', // Horizontal on mobile
+    gap: '8px',
+    zIndex: 100,
+    pointerEvents: 'auto',
+    maxWidth: 'calc(100vw - 24px)',
+    overflowX: 'auto',
+    paddingBottom: '8px', // Scrollbar space
+    scrollbarWidth: 'none', // Hide scrollbar Firefox
+  },
   realmButton: {
     width: '48px',
     height: '48px',
@@ -54,6 +70,13 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(255, 255, 255, 0.1)',
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
     backdropFilter: 'blur(8px)',
+  },
+  realmButtonMobile: {
+    width: '36px', // Smaller on mobile
+    height: '36px',
+    borderRadius: '8px',
+    fontSize: '1.1rem',
+    minWidth: '36px', // Prevent shrinking
   },
   realmButtonActive: {
     border: '2px solid rgba(168, 85, 247, 0.6)',
@@ -138,6 +161,7 @@ export const RealmSelector: React.FC<RealmSelectorProps> = ({
   playerLevel = 1,
   onRealmChange,
   visible = true,
+  isMobile = false,
 }) => {
   const [hoveredRealm, setHoveredRealm] = useState<RealmId | null>(null);
 
@@ -151,7 +175,7 @@ export const RealmSelector: React.FC<RealmSelectorProps> = ({
   if (!visible) return null;
 
   return (
-    <div style={styles.container}>
+    <div style={isMobile ? styles.containerMobile : styles.container} className="no-scrollbar">
       {REALM_ORDER.map((realmId) => {
         const realm = REALMS[realmId];
         if (!realm) return null;
@@ -160,18 +184,29 @@ export const RealmSelector: React.FC<RealmSelectorProps> = ({
         const isLocked = playerLevel < realm.unlock;
         const isHovered = hoveredRealm === realmId;
 
+        // On mobile, only show unlocked + next locked
+        // To save space
+        if (isMobile && isLocked) {
+          // Find index of this realm
+          const index = REALM_ORDER.indexOf(realmId);
+          // Find index of first locked realm
+          const firstLockedIndex = REALM_ORDER.findIndex(id => playerLevel < REALMS[id].unlock);
+          // Only show first locked realm
+          if (index !== firstLockedIndex) return null;
+        }
+
         return (
           <div
             key={realmId}
             style={{
               ...styles.realmButton,
+              ...(isMobile ? styles.realmButtonMobile : {}),
               ...(isActive ? styles.realmButtonActive : {}),
               ...(isLocked ? styles.realmButtonLocked : {}),
             }}
             onClick={() => handleRealmClick(realmId)}
             onMouseEnter={() => setHoveredRealm(realmId)}
             onMouseLeave={() => setHoveredRealm(null)}
-            title={isLocked ? `Unlock at Lv ${realm.unlock}` : realm.name}
           >
             <span>{realm.icon}</span>
 
@@ -180,24 +215,26 @@ export const RealmSelector: React.FC<RealmSelectorProps> = ({
               <div style={styles.lockIcon}>🔒</div>
             )}
 
-            {/* Tooltip */}
-            <div
-              style={{
-                ...styles.tooltip,
-                ...(isHovered ? styles.tooltipVisible : {}),
-              }}
-            >
-              <div style={styles.tooltipName}>{realm.name}</div>
-              <div style={styles.tooltipDesc}>{realm.desc}</div>
-              {isLocked && (
-                <div style={styles.tooltipLock}>🔒 Unlock at Lv {realm.unlock}</div>
-              )}
-              {realm.special === 'tag' && !isLocked && (
-                <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '4px' }}>
-                  ⚡ Tag Arena Mode
-                </div>
-              )}
-            </div>
+            {/* Tooltip (Desktop only) */}
+            {!isMobile && (
+              <div
+                style={{
+                  ...styles.tooltip,
+                  ...(isHovered ? styles.tooltipVisible : {}),
+                }}
+              >
+                <div style={styles.tooltipName}>{realm.name}</div>
+                <div style={styles.tooltipDesc}>{realm.desc}</div>
+                {isLocked && (
+                  <div style={styles.tooltipLock}>🔒 Unlock at Lv {realm.unlock}</div>
+                )}
+                {realm.special === 'tag' && !isLocked && (
+                  <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '4px' }}>
+                    ⚡ Tag Arena Mode
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
       })}
@@ -245,7 +282,7 @@ export const RealmPill: React.FC<RealmPillProps> = ({ realmId, onClick }) => {
 // CONNECTED VERSION (uses GameContext)
 // ============================================================================
 
-export const ConnectedRealmSelector: React.FC<{ visible?: boolean }> = ({ visible = true }) => {
+export const ConnectedRealmSelector: React.FC<{ visible?: boolean, isMobile?: boolean }> = ({ visible = true, isMobile = false }) => {
   const { gameState, progression, audio } = useGame();
   const [currentRealm, setCurrentRealm] = useState<RealmId>('genesis');
   const playerLevel = progression.state.level;
@@ -274,6 +311,7 @@ export const ConnectedRealmSelector: React.FC<{ visible?: boolean }> = ({ visibl
       playerLevel={playerLevel}
       onRealmChange={handleRealmChange}
       visible={visible}
+      isMobile={isMobile}
     />
   );
 };
