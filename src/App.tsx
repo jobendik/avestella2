@@ -64,7 +64,18 @@ function AppLayout(): JSX.Element {
   const { hasUnclaimedRewards, unclaimedDailyCount, unclaimedWeeklyCount, trackProgress } = useQuests();
 
   // Mobile detection for responsive layout
-  const { isMobile, isPortrait } = useMobile();
+  const { isMobile, isPortrait, screenWidth, screenHeight } = useMobile();
+
+  // Debug: Log mobile detection status
+  useEffect(() => {
+    console.log('[App] Mobile detection:', {
+      isMobile,
+      isPortrait,
+      screenWidth,
+      screenHeight,
+      userAgent: navigator.userAgent.substring(0, 80)
+    });
+  }, [isMobile, isPortrait, screenWidth, screenHeight]);
 
   // Anchoring system - watches for emotional peaks to prompt account creation
   useAnchoringTriggers();
@@ -130,6 +141,17 @@ function AppLayout(): JSX.Element {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black">
+      {/* Debug: Mobile Detection Indicator (only in development) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className={`fixed top-2 left-1/2 -translate-x-1/2 z-[9999] px-3 py-1 rounded-full text-xs font-mono pointer-events-none ${
+          isMobile
+            ? 'bg-green-500/90 text-white'
+            : 'bg-orange-500/90 text-white'
+        }`}>
+          {isMobile ? '📱 Mobile' : '🖥️ Desktop'} ({screenWidth}×{screenHeight})
+        </div>
+      )}
+
       {/* Game Canvas - Full screen background */}
       <GameCanvas />
 

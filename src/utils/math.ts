@@ -311,11 +311,38 @@ export function formatTime(ms: number): string {
 }
 
 /**
- * Check if device is mobile
+ * Check if device is mobile - comprehensive detection
  */
 export function isMobile(): boolean {
-  return typeof navigator !== 'undefined' && 
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+
+  // Check 1: User Agent
+  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+  const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+  if (mobileRegex.test(userAgent)) {
+    return true;
+  }
+
+  // Check 2: Touch capability (strong indicator of mobile)
+  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+  // Check 3: Screen width (use screen.width as it's more reliable than window.innerWidth on initial load)
+  const screenWidth = window.screen?.width || window.innerWidth || 0;
+  const isNarrowScreen = screenWidth <= 768;
+
+  // If has touch AND narrow screen, it's likely mobile
+  if (hasTouch && isNarrowScreen) {
+    return true;
+  }
+
+  // Check 4: Orientation API (mobile-specific)
+  if (typeof window.orientation !== 'undefined') {
+    return true;
+  }
+
+  return false;
 }
 
 /**

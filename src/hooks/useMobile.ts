@@ -27,24 +27,50 @@ const SMALL_SCREEN_BREAKPOINT = 480;
  * Provides reactive state that updates on resize and orientation change
  */
 export function useMobile(): UseMobileReturn {
-    const [state, setState] = useState<UseMobileReturn>(() => ({
-        isMobile: isMobileDevice() || (typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT),
-        isPortrait: typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : true,
-        screenWidth: typeof window !== 'undefined' ? window.innerWidth : 1920,
-        screenHeight: typeof window !== 'undefined' ? window.innerHeight : 1080,
-        isSmallScreen: typeof window !== 'undefined' && window.innerWidth < SMALL_SCREEN_BREAKPOINT,
-    }));
+    const [state, setState] = useState<UseMobileReturn>(() => {
+        if (typeof window === 'undefined') {
+            return {
+                isMobile: false,
+                isPortrait: true,
+                screenWidth: 1920,
+                screenHeight: 1080,
+                isSmallScreen: false,
+            };
+        }
 
-    const updateState = useCallback(() => {
+        // Use screen.width for initial detection (more reliable on mobile)
+        const deviceIsMobile = isMobileDevice();
+        const screenWidth = window.screen?.width || window.innerWidth;
         const width = window.innerWidth;
         const height = window.innerHeight;
+        const effectiveWidth = Math.min(width, screenWidth);
 
-        setState({
-            isMobile: isMobileDevice() || width < MOBILE_BREAKPOINT,
+        return {
+            isMobile: deviceIsMobile || effectiveWidth < MOBILE_BREAKPOINT,
             isPortrait: height > width,
             screenWidth: width,
             screenHeight: height,
-            isSmallScreen: width < SMALL_SCREEN_BREAKPOINT,
+            isSmallScreen: effectiveWidth < SMALL_SCREEN_BREAKPOINT,
+        };
+    });
+
+    const updateState = useCallback(() => {
+        // Use screen.width for more reliable mobile detection on initial load
+        // window.innerWidth can be wrong before viewport scaling kicks in
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const screenWidth = window.screen?.width || width;
+
+        // Check if device is mobile by user agent + touch + screen size
+        const deviceIsMobile = isMobileDevice();
+        const effectiveWidth = Math.min(width, screenWidth);
+
+        setState({
+            isMobile: deviceIsMobile || effectiveWidth < MOBILE_BREAKPOINT,
+            isPortrait: height > width,
+            screenWidth: width,
+            screenHeight: height,
+            isSmallScreen: effectiveWidth < SMALL_SCREEN_BREAKPOINT,
         });
     }, []);
 
@@ -52,13 +78,29 @@ export function useMobile(): UseMobileReturn {
         // Update on mount
         updateState();
 
+        // Debug logging for mobile detection
+        if (process.env.NODE_ENV === 'development') {
+            console.log('[useMobile] Initial detection:', {
+                isMobile: state.isMobile,
+                userAgent: navigator.userAgent,
+                screenWidth: window.screen?.width,
+                innerWidth: window.innerWidth,
+                hasTouch: 'ontouchstart' in window,
+                maxTouchPoints: navigator.maxTouchPoints,
+            });
+        }
+
         // Listen for resize and orientation changes
         window.addEventListener('resize', updateState);
         window.addEventListener('orientationchange', updateState);
 
+        // Also update after a short delay to catch viewport scaling
+        const timeoutId = setTimeout(updateState, 100);
+
         return () => {
             window.removeEventListener('resize', updateState);
             window.removeEventListener('orientationchange', updateState);
+            clearTimeout(timeoutId);
         };
     }, [updateState]);
 
