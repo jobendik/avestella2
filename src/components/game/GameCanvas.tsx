@@ -2047,13 +2047,24 @@ export function GameCanvas(): JSX.Element {
     gameState.initializeGame();
 
     // Initialize audio on first interaction
-    const handleFirstInteraction = () => {
-      audioRef.current.initialize();
-      window.removeEventListener('click', handleFirstInteraction);
-      window.removeEventListener('touchstart', handleFirstInteraction);
+    let audioInitialized = false;
+    const handleFirstInteraction = async () => {
+      if (!audioInitialized) {
+        const success = await audioRef.current.initialize();
+        if (success) {
+          audioInitialized = true;
+          console.log('[GameCanvas] Audio initialized successfully');
+        }
+      }
+      // Keep trying to resume AudioContext on mobile until it's running
+      await audioRef.current.resume();
     };
+
+    // Add listeners for multiple interaction types (iOS needs this)
     window.addEventListener('click', handleFirstInteraction);
     window.addEventListener('touchstart', handleFirstInteraction);
+    window.addEventListener('touchend', handleFirstInteraction);
+    window.addEventListener('keydown', handleFirstInteraction);
 
     // Start game loop
     lastTimeRef.current = performance.now();
@@ -2063,6 +2074,8 @@ export function GameCanvas(): JSX.Element {
       window.removeEventListener('resize', resizeCanvas);
       window.removeEventListener('click', handleFirstInteraction);
       window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('touchend', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
       cancelAnimationFrame(animationFrameRef.current);
     };
   }, []); // Empty deps - only run once on mount

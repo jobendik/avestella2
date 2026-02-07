@@ -107,10 +107,40 @@ export class AudioEngine {
 
   /**
    * Resume audio context (for autoplay policy)
+   * iOS/Mobile requires this to be called on every user interaction until audio is running
    */
   async resume(): Promise<void> {
-    if (this.ctx && this.ctx.state === 'suspended') {
-      await resumeAudioContext(this.ctx);
+    if (!this.ctx) return;
+
+    if (this.ctx.state === 'suspended') {
+      try {
+        await resumeAudioContext(this.ctx);
+        console.log('[AudioEngine] AudioContext resumed, state:', this.ctx.state);
+      } catch (error) {
+        console.warn('[AudioEngine] Failed to resume AudioContext:', error);
+      }
+    }
+
+    // Play silent buffer to fully unlock iOS audio
+    if (this.ctx.state === 'running') {
+      this.playUnlockBuffer();
+    }
+  }
+
+  /**
+   * Play a silent buffer to unlock iOS audio
+   */
+  private playUnlockBuffer(): void {
+    if (!this.ctx || !this.sfxGain) return;
+
+    try {
+      const buffer = this.ctx.createBuffer(1, 1, 22050);
+      const source = this.ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.sfxGain);
+      source.start(0);
+    } catch {
+      // Ignore errors
     }
   }
 

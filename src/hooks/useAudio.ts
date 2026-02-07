@@ -13,6 +13,7 @@ export interface UseAudioReturn {
   sfxVolume: number;
   musicVolume: number;
   initialize: () => Promise<boolean>;
+  resume: () => Promise<void>;
   play: (sound: SoundEffect) => void;
   playNote: (note: string, octave?: number, duration?: number) => void;
   playChord: (notes: string[], octave?: number, duration?: number) => void;
@@ -106,6 +107,13 @@ export function useAudio(): UseAudioReturn {
 
     return success;
   }, [isMuted, isMusicMuted, sfxVolume, musicVolume]);
+
+  /**
+   * Resume audio context (for iOS/mobile)
+   */
+  const resume = useCallback(async (): Promise<void> => {
+    await audioEngine.current.resume();
+  }, []);
 
   /**
    * Play a sound effect
@@ -245,6 +253,7 @@ export function useAudio(): UseAudioReturn {
     sfxVolume,
     musicVolume,
     initialize,
+    resume,
     play,
     playNote,
     playChord,
