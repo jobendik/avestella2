@@ -123,8 +123,8 @@ export function MenuBar({ isMobile = false }: MenuBarProps): JSX.Element {
   const challengeBadge = completedToday < 3 ? String(3 - completedToday) : undefined;
   const hasBadge = socialBadge || challengeBadge;
 
-  const handleMenuItemClick = (panel: string) => {
-    togglePanel(panel);
+  const handleMenuItemClick = (panel: any) => {
+    togglePanel(panel as any);
     setMobileMenuOpen(false);
   };
 

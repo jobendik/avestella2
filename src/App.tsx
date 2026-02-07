@@ -141,16 +141,22 @@ function AppLayout(): JSX.Element {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black">
-      {/* Debug: Mobile Detection Indicator (only in development) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className={`fixed top-2 left-1/2 -translate-x-1/2 z-[9999] px-3 py-1 rounded-full text-xs font-mono pointer-events-none ${
+      {/* TEMPORARY: Mobile Detection Debug Panel (ALWAYS VISIBLE) */}
+      <div
+        className={`fixed top-2 left-1/2 -translate-x-1/2 z-[9999] px-3 py-1.5 rounded-lg text-xs font-mono shadow-lg border-2 ${
           isMobile
-            ? 'bg-green-500/90 text-white'
-            : 'bg-orange-500/90 text-white'
-        }`}>
-          {isMobile ? '📱 Mobile' : '🖥️ Desktop'} ({screenWidth}×{screenHeight})
+            ? 'bg-green-500/95 text-white border-green-300'
+            : 'bg-red-500/95 text-white border-red-300'
+        }`}
+        style={{ pointerEvents: 'auto' }}
+      >
+        <div className="font-bold">
+          {isMobile ? '✅ MOBILE DETECTED' : '❌ DESKTOP MODE'}
         </div>
-      )}
+        <div className="text-[10px] opacity-90 mt-0.5">
+          {screenWidth}×{screenHeight} | UA: {navigator.userAgent.substring(0, 40)}...
+        </div>
+      </div>
 
       {/* Game Canvas - Full screen background */}
       <GameCanvas />

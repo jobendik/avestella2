@@ -318,30 +318,55 @@ export function isMobile(): boolean {
     return false;
   }
 
-  // Check 1: User Agent
-  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-  const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+  // Check 1: User Agent (most reliable for iPhone/iPad)
+  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+  const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS|FxiOS|EdgiOS/i;
   if (mobileRegex.test(userAgent)) {
+    console.log('[isMobile] Detected via user agent:', userAgent.substring(0, 100));
     return true;
   }
 
   // Check 2: Touch capability (strong indicator of mobile)
-  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || (navigator as any).msMaxTouchPoints > 0;
 
-  // Check 3: Screen width (use screen.width as it's more reliable than window.innerWidth on initial load)
+  // Check 3: Screen width (use screen.width as it's more reliable)
   const screenWidth = window.screen?.width || window.innerWidth || 0;
   const isNarrowScreen = screenWidth <= 768;
 
   // If has touch AND narrow screen, it's likely mobile
   if (hasTouch && isNarrowScreen) {
+    console.log('[isMobile] Detected via touch + narrow screen:', { hasTouch, screenWidth });
     return true;
   }
 
   // Check 4: Orientation API (mobile-specific)
   if (typeof window.orientation !== 'undefined') {
+    console.log('[isMobile] Detected via orientation API');
     return true;
   }
 
+  // Check 5: Platform detection
+  const platform = (navigator as any).userAgentData?.platform || navigator.platform || '';
+  if (/iPhone|iPad|iPod|Android/i.test(platform)) {
+    console.log('[isMobile] Detected via platform:', platform);
+    return true;
+  }
+
+  // Check 6: Media query for coarse pointer (touch device)
+  if (typeof window.matchMedia !== 'undefined') {
+    const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    if (isCoarsePointer && isNarrowScreen) {
+      console.log('[isMobile] Detected via coarse pointer');
+      return true;
+    }
+  }
+
+  console.log('[isMobile] NOT detected as mobile', {
+    userAgent: userAgent.substring(0, 100),
+    hasTouch,
+    screenWidth,
+    platform
+  });
   return false;
 }
 
