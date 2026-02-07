@@ -289,27 +289,46 @@ The pulse interaction still creates bonds locally via `formBond(nearbyAgent)` in
 
 **Impact:** Low - Bond strength updates already go through server. Only initial bond visual is client-side.
 
-### � Issue 5: Achievement Validation is Client-Side (LOW-MEDIUM)
+### ✅ RESOLVED: Issue 5 - Achievement Validation Now Server-Authoritative
 
-**Status:** PARTIAL - Client evaluates conditions, server blindly accepts
+**Status:** FIXED ✅ (February 5, 2026)
 
-**Flow Analysis:**
-1. **Client** (`src/game/achievements.ts` line 411): `checkAchievements()` evaluates conditions locally
-2. **Client** (`src/hooks/useServerSync.ts` line 371): Calls `gameClient.addAchievement(achievementId)`
-3. **Server** (`server/websocket/handlers/ProgressionHandlers.ts` line 248): `handleAddAchievement()` only adds XP, doesn't validate
+**Problem:** Client evaluated achievement conditions and server blindly accepted any `add_achievement` request.
+
+**Fix Applied:** Updated `ProgressionHandlers.handleAddAchievement()` to validate achievements server-side:
 
 ```typescript
-// Server handler - NO VALIDATION of achievement conditions
-static async handleAddAchievement(connection: PlayerConnection, data: any, ctx: HandlerContext): Promise<void> {
-    const { achievementId } = data;
-    await progressionService.addXP(connection.playerId, 50, 'achievement');
-    // ⚠️ Achievement is added without checking if player actually earned it
+// Server-side achievement validation definitions  
+const ACHIEVEMENT_REQUIREMENTS: Map<string, { stat: string; target: number }> = new Map([
+    ['beacon', { stat: 'beaconsLit', target: 1 }],
+    ['master', { stat: 'beaconsLit', target: 5 }],
+    ['collector', { stat: 'fragmentsCollected', target: 5 }],
+    // ... 30+ achievements mapped
+]);
+
+static async handleAddAchievement(connection, data, ctx) {
+    const playerData = await playerDataService.getPlayerData(connection.playerId);
+    
+    // VALIDATE: Check player stats meet requirements
+    const requirement = ACHIEVEMENT_REQUIREMENTS.get(achievementId);
+    if (requirement) {
+        const statValue = playerData.stats[requirement.stat] || 0;
+        if (statValue < requirement.target) {
+            ctx.sendError(connection, 'Achievement requirements not met');
+            return;
+        }
+    }
+    
+    // Grant achievement only after validation
+    await playerDataService.addAchievement(connection.playerId, achievementId);
 }
 ```
 
-**What Exists but Isn't Used:** The server has `AchievementService.updateProgress()` (lines 462-538) which CAN validate achievement conditions, but it's only exposed via REST API (`gameRoutes.ts`), not called by the WebSocket handler.
-
-**Impact:** Low-Medium - Client could technically claim any achievement. Mitigated by the fact that `GameStats` come from the server, making exploitation require more effort. For hardening, the WebSocket handler should call `achievementService.updateProgress()` to validate unlock conditions.
+**What Changed:**
+- Added `ACHIEVEMENT_REQUIREMENTS` map with 30+ achievement validation rules
+- Server now checks `playerData.stats` against requirements before granting
+- Invalid unlock attempts are rejected with error response
+- Logging added for monitoring exploitation attempts
 
 ### ✅ RESOLVED: Issue 6 - Voice Chat Message Type Mismatch
 
@@ -434,8 +453,8 @@ Seven methods for bond operations now exist in `GameClient.ts`.
 ### ✅ COMPLETED: Voice Chat Message Type Fix
 Fixed `GameClient.setSpeaking()` to send `'voice_speaking'` instead of `'speaking'`.
 
-### 🟡 Recommended: Server-Side Achievement Validation (Medium Priority)
-Modify `ProgressionHandlers.handleAddAchievement()` to call `achievementService.updateProgress()` for validation instead of blindly accepting achievement claims.
+### ✅ COMPLETED: Server-Side Achievement Validation
+Added `ACHIEVEMENT_REQUIREMENTS` map with 30+ achievement validation rules to `ProgressionHandlers.handleAddAchievement()`. Server now validates player stats before granting achievements.
 
 ### 🟢 Optional: Wire Bond API into Pulse Flow (Low Priority)
 The `usePulseInteraction.ts` could call `gameClient.createBondInteraction()` instead of local `formBond()`.
@@ -498,3 +517,4 @@ The architecture is fundamentally sound. The remaining work is:
 ---
 
 *This analysis was performed by examining actual source code, not documentation or claims. All line numbers and code snippets are verified against the current codebase.*
+

@@ -49,7 +49,6 @@ import { useSnapshot, useQuests, useSettings } from '@/hooks';
 import { useAnchoringTriggers } from '@/hooks/useAnchoringTriggers';
 import { gameClient } from '@/services/GameClient';
 import { useMobile } from '@/hooks/useMobile';
-import { Joystick } from '@/components/controls/Joystick';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main App Layout
@@ -145,15 +144,15 @@ function AppLayout(): JSX.Element {
       <HUD isMobile={isMobile} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          MINIMAP - Bottom-left on desktop, top-right on mobile
+          MINIMAP - Bottom-left on desktop, bottom-right on mobile (moved to avoid HUD overlap)
          ═══════════════════════════════════════════════════════════════════════ */}
       <div className={`fixed z-50 pointer-events-auto ${isMobile
-          ? 'top-16 right-2'
-          : 'bottom-4 left-20'
+        ? 'bottom-4 right-2'
+        : 'bottom-4 left-20'
         }`}>
         <Minimap
-          size={isMobile ? 80 : 140}
-          position={isMobile ? "top-right" : "bottom-left"}
+          size={isMobile ? 70 : 140}
+          position={isMobile ? "bottom-right" : "bottom-left"}
           showFog={true}
           showBiomes={true}
           showBeacons={true}
@@ -182,14 +181,11 @@ function AppLayout(): JSX.Element {
       {/* ═══════════════════════════════════════════════════════════════════════
           MOBILE JOYSTICK - Touch control for movement
          ═══════════════════════════════════════════════════════════════════════ */}
-      {isMobile && (
-        <Joystick
-          position="left"
-          size={isPortrait ? 100 : 90}
-          baseColor="rgba(255, 255, 255, 0.12)"
-          stickColor="rgba(255, 255, 255, 0.4)"
-        />
-      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          MOBILE JOYSTICK - Disabled as per user request
+         ═══════════════════════════════════════════════════════════════════════ */}
+      {/* {isMobile && <Joystick ... />} */}
 
       {/* ═══════════════════════════════════════════════════════════════════════
           BOTTOM CENTER - Instant Chat (ENTER to type)

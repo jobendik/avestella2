@@ -6,6 +6,7 @@ import React, { memo, useEffect, useState } from 'react';
 import { useGame } from '@/contexts/GameContext';
 import { addAlpha } from '@/utils/colors';
 import type { ActiveWorldEvent } from '@/hooks/useWorldEvents';
+import { useMobile } from '@/hooks/useMobile';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -14,6 +15,7 @@ import type { ActiveWorldEvent } from '@/hooks/useWorldEvents';
 interface EventNotificationProps {
   event: ActiveWorldEvent;
   onDismiss: () => void;
+  isMobile?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -22,7 +24,8 @@ interface EventNotificationProps {
 
 const EventNotification = memo(function EventNotification({
   event,
-  onDismiss
+  onDismiss,
+  isMobile = false
 }: EventNotificationProps): JSX.Element {
   const [isVisible, setIsVisible] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -96,39 +99,41 @@ const EventNotification = memo(function EventNotification({
           }}
         />
 
-        <div className="relative p-4">
+        <div className={`relative ${isMobile ? 'p-2' : 'p-4'}`}>
           {/* Header */}
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl animate-pulse">{event.config.icon}</span>
-            <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`${isMobile ? 'text-lg' : 'text-2xl'} animate-pulse`}>{event.config.icon}</span>
+            <div className="flex-1 min-w-0">
               <h3
-                className="font-bold text-lg"
+                className={`font-bold ${isMobile ? 'text-xs' : 'text-lg'} truncate`}
                 style={{ color }}
               >
                 {event.config.name}
               </h3>
-              <p className="text-white/60 text-sm">
-                {event.config.description}
-              </p>
+              {!isMobile && (
+                <p className="text-white/60 text-sm">
+                  {event.config.description}
+                </p>
+              )}
             </div>
             <button
               onClick={() => {
                 setIsVisible(false);
                 setTimeout(onDismiss, 300);
               }}
-              className="p-1 rounded-full hover:bg-white/10 transition-colors text-white/40 hover:text-white"
+              className={`${isMobile ? 'p-0.5' : 'p-1'} rounded-full hover:bg-white/10 transition-colors text-white/40 hover:text-white flex-shrink-0`}
             >
               ✕
             </button>
           </div>
 
           {/* Timer bar */}
-          <div className="mt-3">
-            <div className="flex justify-between text-xs text-white/60 mb-1">
-              <span>Time Remaining</span>
-              <span>{formatTime(timeRemaining)}</span>
+          <div className={`${isMobile ? 'mt-0.5' : 'mt-3'}`}>
+            <div className="flex justify-between text-xs text-white/60 mb-0.5">
+              <span className={isMobile ? 'hidden' : ''}>{isMobile ? '' : 'Time Remaining'}</span>
+              <span className={isMobile ? 'text-[9px] ml-auto' : 'text-[10px]'}>{formatTime(timeRemaining)}</span>
             </div>
-            <div className="h-1.5 bg-black/40 rounded-full overflow-hidden">
+            <div className={`${isMobile ? 'h-1' : 'h-1.5'} bg-black/40 rounded-full overflow-hidden`}>
               <div
                 className="h-full rounded-full transition-all duration-1000"
                 style={{
@@ -150,6 +155,7 @@ const EventNotification = memo(function EventNotification({
 
 export const WorldEventNotifications = memo(function WorldEventNotifications(): JSX.Element {
   const { worldEvents } = useGame();
+  const { isMobile } = useMobile();
   const [displayedEvents, setDisplayedEvents] = useState<Set<string>>(new Set());
   const [notifications, setNotifications] = useState<ActiveWorldEvent[]>([]);
 
@@ -176,14 +182,21 @@ export const WorldEventNotifications = memo(function WorldEventNotifications(): 
   if (notifications.length === 0) return <></>;
 
   return (
-    <div className="fixed top-16 left-1/2 -translate-x-1/2 z-40 flex flex-col gap-3 max-w-md w-full px-4">
-      {notifications.slice(0, 2).map(event => (
-        <EventNotification
-          key={event.id}
-          event={event}
-          onDismiss={() => dismissNotification(event.id)}
-        />
-      ))}
+    <div
+      className={`fixed left-1/2 -translate-x-1/2 z-40 flex flex-col gap-3 w-full px-4 pointer-events-none transition-all duration-300
+        ${isMobile ? 'top-24 max-w-[90vw]' : 'top-16 max-w-md'}
+      `}
+    >
+      <div className="pointer-events-auto w-full"> {/* Wrapper for pointer events */}
+        {notifications.slice(0, 2).map(event => (
+          <EventNotification
+            key={event.id}
+            event={event}
+            onDismiss={() => dismissNotification(event.id)}
+            isMobile={isMobile}
+          />
+        ))}
+      </div>
     </div>
   );
 });

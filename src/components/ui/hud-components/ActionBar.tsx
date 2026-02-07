@@ -125,25 +125,25 @@ export function ActionBar({ isMobile = false }: ActionBarProps): JSX.Element {
     return (
       <>
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 pointer-events-auto">
-          <div className="flex items-end gap-2">
+          <div className="flex items-end gap-3">
             {/* Primary Actions (Pulse & Voice) - compact */}
-            <div className="flex items-end gap-2 bg-black/40 backdrop-blur-md rounded-2xl px-3 py-2 border border-white/10 shadow-2xl">
+            <div className="flex items-end gap-3 bg-black/40 backdrop-blur-md rounded-2xl px-3 py-2.5 border border-white/10 shadow-2xl">
               <PulseButton />
               <VoiceButton />
             </div>
 
             {/* Essential secondary actions */}
             <QuickAction
-              icon={<MessageCircle size={14} />}
+              icon={<MessageCircle size={16} />}
               onClick={() => setShowQuickChat(!showQuickChat)}
               hoverColor="hover:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/50"
-              size={34}
+              size={40}
             />
             <QuickAction
-              icon={<Camera size={14} />}
+              icon={<Camera size={16} />}
               onClick={captureScreenshot}
               hoverColor="hover:text-pink-400 hover:bg-pink-500/10 hover:border-pink-500/50"
-              size={34}
+              size={40}
             />
           </div>
         </div>

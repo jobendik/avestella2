@@ -6,11 +6,14 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGame } from '@/contexts/GameContext';
+import { useMobile } from '@/hooks/useMobile';
+import { MessageCircle } from 'lucide-react';
 
 const MESSAGE_XP_REWARD = 1;  // XP gained per message sent
 
 export function InstantChat(): JSX.Element {
   const { gameState, audio, progression } = useGame();
+  const { isMobile } = useMobile();
   const [isActive, setIsActive] = useState(false);
   const [message, setMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -127,7 +130,11 @@ export function InstantChat(): JSX.Element {
   }, []);
 
   return (
-    <div className="fixed bottom-36 left-1/2 transform -translate-x-1/2 z-40 pointer-events-auto">
+    <div
+      className={`fixed left-1/2 transform -translate-x-1/2 z-40 pointer-events-auto transition-all duration-300
+        ${isMobile ? (isActive ? 'bottom-[17rem]' : 'bottom-[11rem]') : 'bottom-36'}
+      `}
+    >
       <div
         className={`
           flex items-center justify-center
@@ -135,7 +142,9 @@ export function InstantChat(): JSX.Element {
           border transition-all duration-200 cursor-text
           ${isActive
             ? 'border-purple-500/50 bg-black/80 px-4 py-2 w-80'
-            : 'border-white/10 hover:border-white/20 px-6 py-2.5 w-64'
+            : isMobile
+              ? 'border-white/10 hover:border-white/20 px-4 py-2 h-10'
+              : 'border-white/10 hover:border-white/20 px-6 py-2.5 w-64'
           }
         `}
         onClick={handlePillClick}
@@ -167,9 +176,16 @@ export function InstantChat(): JSX.Element {
             </button>
           </>
         ) : (
-          <span className="text-white/40 text-sm select-none">
-            Press Enter to chat...
-          </span>
+          isMobile ? (
+            <div className="flex items-center gap-2">
+              <MessageCircle size={18} className="text-white/50" />
+              <span className="text-white/50 text-xs">Chat</span>
+            </div>
+          ) : (
+            <span className="text-white/40 text-sm select-none">
+              Press Enter to chat...
+            </span>
+          )
         )}
       </div>
     </div>
