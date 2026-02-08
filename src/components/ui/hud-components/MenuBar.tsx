@@ -164,11 +164,11 @@ export function MenuBar({ isMobile = false }: MenuBarProps): JSX.Element {
           <>
             {/* Backdrop */}
             <div
-              className="fixed inset-0 bg-black/80 z-[100]"
+              className="fixed inset-0 bg-black/80 z-[100] pointer-events-auto"
               onClick={() => setMobileMenuOpen(false)}
             />
             {/* Drawer */}
-            <div className="fixed top-0 right-0 bottom-0 w-64 bg-black/95 backdrop-blur-xl border-l border-white/10 z-[101] p-4 overflow-y-auto">
+            <div className="fixed top-0 right-0 bottom-0 w-64 bg-black/95 backdrop-blur-xl border-l border-white/10 z-[101] p-4 overflow-y-auto pointer-events-auto">
               {/* Close button */}
               <button
                 onClick={() => setMobileMenuOpen(false)}
