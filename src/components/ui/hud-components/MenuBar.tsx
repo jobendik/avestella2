@@ -95,11 +95,11 @@ function MenuDropdown({ label, icon, iconColor, children, badge }: MenuDropdownP
         <>
           {/* Backdrop to close dropdown */}
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-[60]"
             onClick={() => setIsOpen(false)}
           />
           {/* Dropdown menu */}
-          <div className="absolute top-full right-0 mt-1 bg-black/90 backdrop-blur-md rounded-xl border border-white/10 shadow-xl z-50 min-w-[160px] py-1">
+          <div className="absolute top-full right-0 mt-1 bg-black/90 backdrop-blur-md rounded-xl border border-white/10 shadow-xl z-[70] min-w-[160px] py-1">
             {children}
           </div>
         </>
