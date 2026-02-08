@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Users, Heart, Trophy, Award, Gift, Shield, Target, Book, Scroll,
   Settings as SettingsIcon, ShoppingBag, Dog, Image, ChevronDown, Globe,
@@ -159,8 +160,8 @@ export function MenuBar({ isMobile = false }: MenuBarProps): JSX.Element {
           )}
         </button>
 
-        {/* Full-screen drawer */}
-        {mobileMenuOpen && (
+        {/* Full-screen drawer - rendered via portal to escape HUD stacking context */}
+        {mobileMenuOpen && createPortal(
           <>
             {/* Backdrop */}
             <div
@@ -218,7 +219,8 @@ export function MenuBar({ isMobile = false }: MenuBarProps): JSX.Element {
                 <MenuItem icon={<SettingsIcon size={14} className="text-white/60" />} label="Settings" onClick={() => handleMenuItemClick('settings')} />
               </div>
             </div>
-          </>
+          </>,
+          document.body
         )}
       </>
     );
