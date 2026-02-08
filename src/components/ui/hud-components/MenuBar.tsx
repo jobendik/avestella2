@@ -74,10 +74,23 @@ interface MenuDropdownProps {
 
 function MenuDropdown({ label, icon, iconColor, children, badge }: MenuDropdownProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const [dropdownPosition, setDropdownPosition] = React.useState({ top: 0, right: 0 });
+
+  React.useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right
+      });
+    }
+  }, [isOpen]);
 
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors ${iconColor}`}
       >
@@ -98,8 +111,11 @@ function MenuDropdown({ label, icon, iconColor, children, badge }: MenuDropdownP
             className="fixed inset-0 z-[60]"
             onClick={() => setIsOpen(false)}
           />
-          {/* Dropdown menu */}
-          <div className="absolute top-full right-0 mt-1 bg-black/90 backdrop-blur-md rounded-xl border border-white/10 shadow-xl z-[70] min-w-[160px] py-1">
+          {/* Dropdown menu - now using fixed positioning */}
+          <div
+            className="fixed bg-black/90 backdrop-blur-md rounded-xl border border-white/10 shadow-xl z-[70] min-w-[160px] py-1 pointer-events-auto"
+            style={{ top: `${dropdownPosition.top}px`, right: `${dropdownPosition.right}px` }}
+          >
             {children}
           </div>
         </>
