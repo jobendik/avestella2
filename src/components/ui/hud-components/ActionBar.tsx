@@ -120,11 +120,11 @@ export function ActionBar({ isMobile = false }: ActionBarProps): JSX.Element {
     setShowQuickChat(false);
   };
 
-  // Mobile layout: simplified, moved up for joystick
+  // Mobile layout: simplified, as low as possible
   if (isMobile) {
     return (
       <>
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 pointer-events-auto">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto">
           <div className="flex items-end gap-3">
             {/* Primary Actions (Pulse & Voice) - compact */}
             <div className="flex items-end gap-3 bg-black/40 backdrop-blur-md rounded-2xl px-3 py-2.5 border border-white/10 shadow-2xl">

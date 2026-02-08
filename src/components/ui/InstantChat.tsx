@@ -132,7 +132,7 @@ export function InstantChat(): JSX.Element {
   return (
     <div
       className={`fixed left-1/2 transform -translate-x-1/2 z-40 pointer-events-auto transition-all duration-300
-        ${isMobile ? (isActive ? 'bottom-[17rem]' : 'bottom-[11rem]') : 'bottom-36'}
+        ${isMobile ? (isActive ? 'bottom-48' : 'bottom-24') : 'bottom-36'}
       `}
     >
       <div

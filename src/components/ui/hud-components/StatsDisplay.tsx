@@ -8,7 +8,12 @@ import { Sparkles, Users } from 'lucide-react';
 import { useGameStateContext, useProgressionContext } from '@/contexts/GameContext';
 import { LADDER_TIERS, getCurrentTier } from '@/constants/progression';
 
-export function StatsDisplay(): JSX.Element {
+interface StatsDisplayProps {
+  isMobile?: boolean;
+  compact?: boolean;
+}
+
+export function StatsDisplay({ isMobile = false, compact = false }: StatsDisplayProps): JSX.Element {
   const { gameState } = useGameStateContext();
   const { state: progressionState } = useProgressionContext();
 
@@ -34,6 +39,38 @@ export function StatsDisplay(): JSX.Element {
     ? ((ladderScore - currentLadderTier.minPoints) / (nextTier.minPoints - currentLadderTier.minPoints)) * 100
     : 100;
 
+  // Mobile compact layout - only essential game info
+  if (isMobile || compact) {
+    return (
+      <div className="flex items-center gap-2">
+        {/* Light Level - most important */}
+        <div className="bg-black/60 backdrop-blur-md rounded-lg px-2 py-1 border border-white/10 flex items-center gap-1.5">
+          <span className="text-[8px] text-white/40">LIGHT</span>
+          <div className="h-1.5 w-12 rounded-full bg-black/60 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-amber-600 via-yellow-400 to-white transition-all duration-300"
+              style={{ width: `${lightLevel}%` }}
+            />
+          </div>
+          <span className="text-[9px] text-amber-400 font-bold">{lightLevel}%</span>
+        </div>
+
+        {/* Nearby count */}
+        <div className="bg-black/60 backdrop-blur-md rounded-lg px-2 py-1 border border-white/10 flex items-center gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-[9px] text-white/60">{nearbyAgentsCount}</span>
+        </div>
+
+        {/* Total met */}
+        <div className="bg-black/60 backdrop-blur-md rounded-lg px-2 py-1 border border-white/10 flex items-center gap-1">
+          <Users size={9} className="text-purple-400" />
+          <span className="text-[9px] text-white/60">{totalSoulsMet}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop full layout
   return (
     <div className="flex flex-col gap-2">
       {/* Fragment Counter */}

@@ -51,7 +51,12 @@ export function HUD({ isMobile = false }: HUDProps): JSX.Element | null {
           </div>
         </div>
 
-        {/* BOTTOM CENTER - Action Bar (moved up for joystick) */}
+        {/* ESSENTIAL GAME STATS - Always visible (Light, Nearby, Met) */}
+        <div className="absolute top-14 left-2 pointer-events-auto scale-90 origin-left">
+          <StatsDisplay isMobile={true} compact={true} />
+        </div>
+
+        {/* BOTTOM CENTER - Action Bar (lowered as much as possible) */}
         <ActionBar isMobile={true} />
 
         {/* Floating Panels & Overlays */}
